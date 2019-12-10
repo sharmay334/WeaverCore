@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRiskPlrTxnControl" table="st_risk_plr_txn_control">
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+        <property name="playerId" type="java.lang.Long">
+            <column name="player_id" not-null="true" />
+        </property>
+       
+        <property name="deposit" type="java.lang.String">
+            <column name="deposit" length="2" not-null="true" />
+        </property>
+        <property name="withdrawal" type="java.lang.String">
+            <column name="withdrawal" length="2" not-null="true" />
+        </property>
+        <property name="wagerSports" type="java.lang.String">
+            <column name="wager_sports" length="2" not-null="true" />
+        </property>
+        <property name="wagerCasino" type="java.lang.String">
+            <column name="wager_casino" length="2" not-null="true" />
+        </property>
+        <property name="wagerRummy" type="java.lang.String">
+            <column name="wager_rummy" length="2" not-null="true" />
+        </property>
+        <property name="wagerLiveCasino" type="java.lang.String">
+            <column name="wager_live_casino" length="2" not-null="true" />
+        </property>
+        <property name="wagerPoker" type="java.lang.String">
+            <column name="wager_poker" length="2" not-null="true" />
+        </property>
+        <property name="wagerBingo" type="java.lang.String">
+            <column name="wager_bingo" length="2" not-null="true" />
+        </property>
+        <property name="wagerGames" type="java.lang.String">
+            <column name="wager_games" length="2" not-null="true" />
+        </property>
+        <property name="wagerDrawGames" type="java.lang.String">
+            <column name="wager_draw_games" length="2" not-null="true" />
+        </property>
+        <property name="wagerSportsLottery" type="java.lang.String">
+            <column name="wager_sports_lottery" length="2" not-null="true" />
+        </property>
+        <property name="wagerInstantDraw" type="java.lang.String">
+            <column name="wager_instant_draw" length="2" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

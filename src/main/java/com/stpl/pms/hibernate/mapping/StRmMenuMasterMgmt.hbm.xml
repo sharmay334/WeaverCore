@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmMenuMasterMgmt" table="st_rm_menu_master_mgmt">
+<!--         <cache usage="read-write" region="StRmMenuMasterMgmtCache" /> -->
+        <id name="menuId" type="java.lang.Integer">
+            <column name="menu_id" />
+            <generator class="native" />
+        </id>
+        <property name="actionId" type="java.lang.Integer">
+            <column name="action_id" not-null="true">
+                <comment>action associated with that menu item</comment>
+            </column>
+        </property>
+        <property name="menuName" type="java.lang.String">
+            <column name="menu_name" length="50">
+                <comment>name of the menu</comment>
+            </column>
+        </property>
+        <property name="menuDispCode" type="java.lang.String">
+            <column name="menu_disp_code" length="50">
+                <comment>the display code of the menu</comment>
+            </column>
+        </property>
+        <property name="parentMenuId" type="java.lang.Short">
+            <column name="parent_menu_id">
+                <comment>if the menu item is a part of the subemenu then the id of its parent menu</comment>
+            </column>
+        </property>
+        <property name="itemOrder" type="java.lang.Short">
+            <column name="item_order">
+                <comment>the order at which that item appears</comment>
+            </column>
+        </property>
+    </class>
+</hibernate-mapping>

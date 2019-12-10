@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 7 Jun, 2018 11:03:21 AM by Hibernate Tools 3.5.0.Final -->
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmGameUserMapping" table="st_rm_game_user_mapping">
+        <id name="id" type="int">
+            <column name="id" />
+            <generator class="assigned" />
+        </id>
+        <property name="user_id" type="int">
+            <column name="user_id" />
+        </property>
+        <property name="game_no" type="int">
+            <column name="game_no" />
+        </property>
+         <property name="batch_no" type="int">
+            <column name="batch_no" />
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" />
+        </property>
+        <property name="date_time" type="java.sql.Timestamp">
+            <column name="date_time" />
+        </property>
+          <property name="save_mode" type="java.lang.String">
+            <column name="save_mode" />
+        </property>
+    </class>
+</hibernate-mapping>

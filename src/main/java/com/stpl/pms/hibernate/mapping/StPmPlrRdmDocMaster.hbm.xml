@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StPmPlrRdmDocMaster" table="st_pm_plr_rdm_doc_master" >
+        <id name="docId" type="java.lang.Long">
+            <column name="doc_id" />
+            <generator class="native" />
+        </id>
+        <property name="playerId" type="java.lang.Long">
+            <column name="player_id" not-null="true" />
+        </property>
+        <property name="redeemAccId" type="java.lang.Long">
+            <column name="redeem_acc_id" not-null="true" />
+        </property>
+        <property name="bankIdUniqueNo" type="java.lang.String">
+            <column name="bank_id_unique_no" length="50"  />
+        </property>
+        <property name="bankIdPath" type="java.lang.String">
+            <column name="bank_id_path" length="50" not-null="true" />
+        </property>
+        <property name="identityIdUniqueNo" type="java.lang.String">
+            <column name="identity_id_unique_no" length="50"  />
+        </property>
+        <property name="identityIdPath" type="java.lang.String">
+            <column name="identity_id_path" precision="20" scale="4" />
+        </property>
+        <property name="bankIdVerification" type="java.lang.String">
+            <column name="bank_id_verification" />
+        </property>
+        <property name="identityIdVerification" type="java.lang.String">
+            <column name="identity_id_verification"  />
+        </property>
+        <property name="uploadedDate" type="java.sql.Timestamp">
+            <column name="uploaded_date" length="19" not-null="true" />
+        </property>
+
+    </class>
+</hibernate-mapping>

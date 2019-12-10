@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmServiceDeliveryMaster" table="st_rm_service_delivery_master">
+<!--         <cache usage="read-write" region="StRmServiceDeliveryMasterCache"/> -->
+        <id name="sdmId" type="java.lang.Short">
+            <column name="sdm_id" />
+            <generator class="native" />
+        </id>
+        
+         <many-to-one name="stRmServiceMaster" class="com.stpl.pms.hibernate.mapping.StRmServiceMaster" lazy="false">
+         <column name="service_id"></column>
+        </many-to-one>
+        
+        <property name="domainId" type="java.lang.Short">
+            <column name="domain_id" not-null="true">
+                <comment>the domain corresponding to that service</comment>
+            </column>
+        </property>
+        <property name="tier" type="java.lang.String">
+            <column name="tier" length="6" not-null="true" />
+        </property>
+        <property name="interfaceType" type="java.lang.String">
+            <column name="interface" length="8" not-null="true">
+                <comment>the exact interface on which the service is supposed to work on</comment>
+            </column>
+        </property>
+        <property name="serviceDisplayName" type="java.lang.String">
+            <column name="service_display_name" length="30">
+                <comment>the display name of that service</comment>
+            </column>
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="8" not-null="true">
+                <comment>whether that service is active or not for that particular domain</comment>
+            </column>
+        </property>
+        <property name="menuOrder" type="java.lang.Short">
+            <column name="menu_order">
+                <comment>the id from the order in which the menu items will appera</comment>
+            </column>
+        </property>
+    </class>
+</hibernate-mapping>

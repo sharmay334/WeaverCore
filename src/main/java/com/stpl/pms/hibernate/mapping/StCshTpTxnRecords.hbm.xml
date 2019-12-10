@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StCshTpTxnRecords" table="st_csh_tp_txn_records">
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+	<property name="domainId" type="java.lang.Short">
+	    <column name="domain_id" not-null="true" />
+	</property>
+        <property name="weaverTxnId" type="java.lang.Long">
+            <column name="weaver_txn_id" not-null="false" />
+        </property>
+        <property name="tpTxnId" type="java.lang.Long">
+            <column name="tp_txn_id" not-null="false" />
+        </property>
+        <property name="requestDate" type="java.sql.Timestamp">
+            <column name="request_date" length="19" not-null="true" />
+        </property>
+        <property name="mobileNo" type="java.lang.String">
+            <column name="mobile_no" length="15" not-null="true" />
+        </property>
+        <property name="providerName" type="java.lang.String">
+            <column name="provider_name" length="15" not-null="true" />
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="15" not-null="true" />
+        </property>
+        <property name="requestType" type="java.lang.String">
+            <column name="request_type" length="15" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

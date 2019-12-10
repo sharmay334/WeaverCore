@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+                                   "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+ <class
+  name="com.stpl.pms.hibernate.mapping.StCshPlrDepositResponseSafex" table="st_csh_plr_deposit_response_safex">
+	  <id name="id" type="java.lang.Long">
+	   <column name="id"/>
+	   <generator class="native"/>
+	  </id>	 
+	  
+     <property name="agId" type="java.lang.String">
+            <column name="ag_id"/>
+        </property>
+        <property name="meId" type="java.lang.String">
+            <column name="me_id"/>
+        </property>
+       <property name="requestId" type="java.lang.Long">
+	   		<column name="request_id"/>
+	   </property>
+        <property name="amount" type="java.lang.Double">
+            <column name="amount" />
+        </property>
+        <property name="country" type="java.lang.String">
+            <column name="country" />
+        </property>
+        <property name="currency" type="java.lang.String">
+            <column name="currency" />
+        </property>
+        <property name="txnDate" type="java.lang.String">
+            <column name="txn_date"/>
+        </property>
+        <property name="txnTime" type="java.lang.String">
+            <column name="txn_time" />
+        </property>
+        <property name="agRef" type="java.lang.String">
+            <column name="ag_ref"  />
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" />
+        </property>
+        <property name="resCode" type="java.lang.String">
+            <column name="res_code"/>
+        </property>        
+        <property name="resMessage" type="java.lang.String">
+            <column name="res_message" />
+        </property>        
+        <property name="pgRef" type="java.lang.String">
+            <column name="pg_ref" />
+        </property>
+        
+        <property name="pgId" type="java.lang.String">
+            <column name="pg_id" />
+        </property>
+        <property name="pgName" type="java.lang.String">
+            <column name="pg_name" />
+        </property>
+        <property name="paymode" type="java.lang.String">
+            <column name="pay_mode" />
+        </property>
+        <property name="emiMonths" type="java.lang.String">
+            <column name="emi_months" />
+        </property>
+        
+        
+        <property name="fraudAction" type="java.lang.String">
+            <column name="fraud_action" />
+        </property>        
+        <property name="fraudMessage" type="java.lang.String">
+            <column name="fraud_message" />
+        </property>
+        <property name="score" type="java.lang.String">
+            <column name="score" />
+        </property>
+        
+        
+        <property name="udf1" type="java.lang.String">
+            <column name="udf1" />
+        </property>
+         <property name="udf2" type="java.lang.String">
+            <column name="udf2" />
+        </property>
+         <property name="udf3" type="java.lang.String">
+            <column name="udf3" />
+        </property>
+         <property name="udf4" type="java.lang.String">
+            <column name="udf4" />
+        </property>
+         <property name="udf5" type="java.lang.String">
+            <column name="udf5" />
+        </property>        
+  
+ </class>
+</hibernate-mapping>

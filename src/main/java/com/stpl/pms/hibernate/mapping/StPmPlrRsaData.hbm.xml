@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+ <class name="com.stpl.pms.hibernate.mapping.StPmPlrRsaData" table="st_pm_plr_rsa_data">
+  <id name="id" type="java.lang.Long">
+   <column name="id" />
+   <generator class="native"></generator>
+  </id>
+  
+  <property name="playerId" type="java.lang.Long">
+   <column name="player_id" length="20" not-null="true">
+   	<comment>Id of player</comment>
+   </column>
+  </property>
+  
+  <property name="domainId" type="java.lang.Short">
+  	<column name="domain_id" length="5" not-null="true">
+  	 <comment>domain id</comment>
+  	</column>
+  </property>
+  
+  <property name="rsaId" type="java.lang.String">
+  	<column name="rsa_id" length="20" not-null="true">
+  		<comment>Unique id of 13 digits -- ithuba</comment>
+  	</column>
+  </property>
+ </class>
+</hibernate-mapping>

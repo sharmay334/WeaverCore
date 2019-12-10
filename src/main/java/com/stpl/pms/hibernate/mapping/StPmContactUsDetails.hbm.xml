@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.stpl.pms.hibernate.mapping.StPmContactUsDetails"
+		table="st_pm_contact_us_details">
+		<id name="id" type="java.lang.Long">
+			<column name="id" />
+			<generator class="native" />
+		</id>
+		<property name="userName" type="java.lang.String">
+			<column name="user_name" not-null="true" length="50">
+				<comment>User name who provides feedback</comment>
+			</column>
+		</property>
+		<property name="emailId" type="java.lang.String">
+			<column name="email_id" not-null="true" length="50">
+				<comment>Email Id of user</comment>
+			</column>
+		</property>
+		<property name="subject" type="java.lang.String">
+			<column name="subject" not-null="true" length="50">
+				<comment>subject about feed back</comment>
+			</column>
+		</property>
+		<property name="message" type="java.lang.String">
+			<column name="message" not-null="true" length="300">
+				<comment>Message in detail</comment>
+			</column>
+		</property>
+	</class>
+</hibernate-mapping>

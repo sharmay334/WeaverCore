@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmBoRoleMaster" table="st_rm_bo_role_master">
+<!--         <cache usage="read-write" region="StRmBoRoleMasterCache"/> -->
+        <id name="roleId" type="java.lang.Integer">
+            <column name="role_id" />
+            <generator class="native" />
+        </id>
+        <property name="roleName" type="java.lang.String">
+            <column name="role_name" length="30" not-null="true" unique="true">
+                <comment>the name of that role</comment>
+            </column>
+        </property>
+        <property name="roleDescription" type="java.lang.String">
+            <column name="role_description" length="30">
+                <comment>some description about that particular role</comment>
+            </column>
+        </property>
+        <property name="creatorUserId" type="java.lang.Integer">
+            <column name="creator_user_id">
+                <comment>id of the person who has created this specific role</comment>
+            </column>
+        </property>
+        <property name="tier" type="java.lang.String">
+            <column name="tier" length="6" not-null="true">
+                <comment>the tier to which that particular role belongs</comment>
+            </column>
+        </property>
+        <property name="isMaster" type="java.lang.String">
+            <column name="is_master" length="2" not-null="true">
+                <comment>whether the role is a master like BBO master or not</comment>
+            </column>
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="8" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

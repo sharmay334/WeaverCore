@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmActionFunctionMappingMgmt" table="st_rm_action_function_mapping_mgmt">
+<!--     	<cache usage="read-write" region="StRmActionFunctionMappingMgmtCache"/> -->
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+        <property name="fnId" type="java.lang.Integer">
+            <column name="fn_id" />
+        </property>
+        <property name="actionId" type="java.lang.Integer">
+            <column name="action_id" not-null="true">
+                <comment>id of the action whic invokes the corresponding function</comment>
+            </column>
+        </property>
+        <property name="actionName" type="java.lang.String">
+            <column name="action_name" length="50">
+                <comment>name of the action</comment>
+            </column>
+        </property>
+        <property name="actionDesc" type="java.lang.String">
+            <column name="action_desc" length="50">
+                <comment>description of teh action</comment>
+            </column>
+        </property>
+        <property name="actionUrl" type="java.lang.String">
+            <column name="action_url" length="50">
+                <comment>the url which is shown in teh address bar afetr url rewriting</comment>
+            </column>
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="8" not-null="true">
+                <comment>whether the action is active or not</comment>
+            </column>
+        </property>
+    </class>
+</hibernate-mapping>

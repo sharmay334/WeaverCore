@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+	<class name="com.stpl.pms.hibernate.mapping.StCshUnclaimedDepositsBCEID"
+		table="st_csh_unclaimed_deposits_bceid">
+		<id name="id" type="java.lang.Long">
+			<column name="id" />
+			<generator class="native" />
+		</id>
+		<property name="domainId" type="java.lang.Short">
+			<column name="domain_id" not-null="true" />
+		</property>
+        <property name="tpTxnId" type="java.lang.Long">
+            <column name="tp_txn_id" not-null="false" />
+        </property>
+		<property name="requestMobileNo" type="java.lang.String">
+			<column name="request_mobile_no" not-null="true" />
+		</property>
+		<property name="actualMobileNo" type="java.lang.String">
+			<column name="actual_mobile_no" not-null="false" />
+		</property>
+		<property name="amount" type="java.lang.Double">
+			<column name="amount" precision="20" not-null="true" />
+		</property>
+		<property name="status" type="java.lang.String">
+			<column name="status" not-null="true" />
+		</property>
+		<property name="requestDate" type="java.sql.Timestamp">
+			<column name="request_date" length="19" not-null="true" />
+		</property>
+	</class>
+</hibernate-mapping>

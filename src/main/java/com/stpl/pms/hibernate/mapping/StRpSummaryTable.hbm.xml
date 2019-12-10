@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRpSummaryTable" table="st_rp_summary_table" >
+        <id name="summaryId" type="short">
+            <column name="summary_id" />
+            <generator class="native"></generator>
+        </id>
+        <property name="domainId" type="short">
+            <column name="domain_id" not-null="true" />
+        </property>
+        <property name="wagerAmount" type="java.lang.Double">
+            <column name="wager_amount" precision="20" not-null="true" />
+        </property>
+        <property name="winningAmount" type="java.lang.Double">
+            <column name="winning_amount" precision="20" not-null="true" />
+        </property>
+        <property name="netAmount" type="java.lang.Double">
+            <column name="net_amount" precision="20" not-null="true" />
+        </property>
+        <property name="summaryDate" type="java.sql.Timestamp">
+            <column name="summary_date" length="19" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

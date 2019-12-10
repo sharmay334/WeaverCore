@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRiskPlrProfileMaster" table="st_risk_plr_profile_master">
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+        <property name="playerId" type="java.lang.Long">
+            <column name="player_id" not-null="true" />
+        </property>
+        <property name="regScoreAsNew" type="java.lang.Double">
+            <column name="reg_score_as_new" precision="10" />
+        </property>
+        <property name="regScoreAsOld" type="java.lang.Double">
+            <column name="reg_score_as_old" precision="10" />
+        </property>
+        <property name="depoScoreAsNew" type="java.lang.Double">
+            <column name="depo_score_as_new" precision="10" />
+        </property>
+        <property name="depoScoreAsOld" type="java.lang.Double">
+            <column name="depo_score_as_old" precision="10" />
+        </property>
+        <property name="withScoreAsNew" type="java.lang.Double">
+            <column name="with_score_as_new" precision="10" />
+        </property>
+        <property name="withScoreAsOld" type="java.lang.Double">
+            <column name="with_score_as_old" precision="10" />
+        </property>
+    </class>
+</hibernate-mapping>

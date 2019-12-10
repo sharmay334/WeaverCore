@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmPrivilegeRepMgmt" table="st_rm_privilege_rep_mgmt">
+<!--         <cache usage="read-write" region="StRmPrivilegeRepMgmtCache"/> -->
+        <id name="fnId" type="java.lang.Integer">
+            <column name="fn_id" />
+            <generator class="native" />
+        </id>
+        <property name="functionName" type="java.lang.String">
+            <column name="function_name" length="50" not-null="true">
+                <comment>name of the function</comment>
+            </column>
+        </property>
+        <property name="privId" type="java.lang.Integer">
+            <column name="priv_id" not-null="true">
+                <comment>id of the privilegeeeee</comment>
+            </column>
+        </property>
+        <property name="privNameCode" type="java.lang.String">
+            <column name="priv_name_code" length="50">
+                <comment>name code of the priv</comment>
+            </column>
+        </property>
+        <property name="groupId" type="java.lang.Short">
+            <column name="group_id" not-null="true">
+                <comment>the group in which that priv is shown</comment>
+            </column>
+        </property>
+        <property name="groupNameCode" type="java.lang.String">
+            <column name="group_name_code" length="50">
+                <comment>name code of tha t group</comment>
+            </column>
+        </property>
+        <property name="privStatus" type="java.lang.String">
+            <column name="priv_status" length="8" not-null="true">
+                <comment>whether that privilege is active or not</comment>
+            </column>
+        </property>
+        <property name="tier" type="java.lang.String">
+            <column name="tier" length="6" not-null="true" />
+        </property>
+        <property name="relatedTo" type="java.lang.String">
+            <column name="related_to" length="12" not-null="true">
+                <comment>to which module that privilege is actually related</comment>
+            </column>
+        </property>
+        <property name="dependentPriv" type="java.lang.String">
+            <column name="dependent_priv" length="50">
+                <comment>all the privileges on which this particular privilege is dependent</comment>
+            </column>
+        </property>
+        <property name="checkLogin" type="java.lang.String">
+            <column name="check_login" length="2" not-null="true" />
+        </property>
+        <property name="isDefault" type="java.lang.String">
+            <column name="is_default" length="2" not-null="true">
+                <comment>wheteher that privilege comes under the default group or not i.e whether it is supposed to be given by default or not?</comment>
+            </column>
+        </property>
+        <property name="isDefaultGroup" type="java.lang.String">
+            <column name="is_default_group" length="2" not-null="true">
+                <comment>whether that privilege is the default privilege for the group or not</comment>
+            </column>
+        </property>
+    </class>
+</hibernate-mapping>

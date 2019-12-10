@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRiskDuplicateMaster" table="st_risk_duplicate_master">
+        <id name="id" type="java.lang.Integer">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+        <property name="domainId" type="java.lang.Short">
+            <column name="domain_id" not-null="true" />
+        </property>
+        <property name="fromScore" type="java.lang.Integer">
+            <column name="from_score" />
+        </property>
+        <property name="toScore" type="java.lang.Integer">
+            <column name="to_score" />
+        </property>
+         <property name="isRecord" type="java.lang.String">
+            <column name="is_record" length="2" />
+        </property>
+        <property name="actionNew" type="java.lang.String">
+            <column name="action_new" length="500" />
+        </property>
+        <property name="actionOld" type="java.lang.String">
+            <column name="action_old" length="500" />
+        </property>
+        <property name="notoficationNew" type="java.lang.String">
+            <column name="notofication_new" length="500" />
+        </property>
+        <property name="notoficationOld" type="java.lang.String">
+            <column name="notofication_old" length="500" />
+        </property>
+        <property name="sectionName" type="java.lang.String">
+            <column name="section_name" length="100" />
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="10" />
+        </property>
+         <property name="createdBy" type="java.lang.Long">
+            <column name="created_by" not-null="true" />
+        </property>
+        <property name="creationTime" type="java.sql.Timestamp">
+            <column name="creation_time" length="19" not-null="true" />
+        </property>
+        <property name="lastUpdatedBy" type="java.lang.Long">
+            <column name="last_updated_by" not-null="true" />
+        </property>
+        <property name="lastUpdationTime" type="java.sql.Timestamp">
+            <column name="last_updation_time" length="19" not-null="true" />
+        </property>    
+    </class>
+</hibernate-mapping>

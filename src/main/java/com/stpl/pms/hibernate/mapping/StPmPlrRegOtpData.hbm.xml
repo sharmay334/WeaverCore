@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.stpl.pms.hibernate.mapping.StPmPlrRegOtpData"
+		table="st_pm_plr_reg_otp_data">
+		<id name="id" type="java.lang.Long">
+			<column name="id" />
+			<generator class="native" />
+		</id>
+
+		<property name="mobileNo" type="java.lang.Long">
+			<column name="mobile_no" length="20" not-null="true">
+			</column>
+		</property>
+
+		<property name="verificationCode" type="java.lang.String">
+			<column name="verification_code" length="10" not-null="true">
+			</column>
+		</property>
+
+		<property name="mobVerificationExpiry" type="java.sql.Timestamp">
+			<column name="mob_verification_expiry" length="19">
+			</column>
+		</property>
+	</class>
+</hibernate-mapping>

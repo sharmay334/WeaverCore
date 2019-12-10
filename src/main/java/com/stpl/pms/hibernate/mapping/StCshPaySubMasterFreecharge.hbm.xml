@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StCshPaySubMasterFreecharge" table="st_csh_pay_sub_master_freecharge" >
+        <id name="subTypeId" type="java.lang.Integer">
+            <column name="sub_type_id" />
+            <generator class="native" />
+        </id>
+        <property name="walletName" type="java.lang.String">
+            <column name="wallet_name" length="50" not-null="true" />
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="8" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

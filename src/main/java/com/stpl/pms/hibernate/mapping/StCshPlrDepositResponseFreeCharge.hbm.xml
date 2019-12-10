@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StCshPlrDepositResponseFreeCharge" table="st_csh_plr_deposit_response_freecharge">
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+        <property name="requestId" type="java.lang.Long">
+            <column name="request_id"/>
+        </property>
+        <property name="freechargeId" type="java.lang.String">
+            <column name="freecharge_id" length="30" />
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="40" />
+        </property>
+        <property name="amount" type="java.lang.Double">
+            <column name="amount" />
+        </property>
+        <property name="errorCode" type="java.lang.String">
+            <column name="error_code" length="20" />
+        </property>
+        <property name="errorMessage" type="java.lang.String">
+            <column name="error_message" />
+        </property>
+        <property name="mode" type="java.lang.String">
+            <column name="mode" length="30" />
+        </property>
+        <property name="checksum" type="java.lang.String">
+            <column name="checksum" />
+        </property>
+        <property name="currency" type="java.lang.String">
+            <column name="currency" length="10" />
+        </property>
+        <property name="pgUsed" type="java.lang.String">
+            <column name="pg_used" length="30" />
+        </property>
+        <property name="pgUnderlier" type="java.lang.String">
+            <column name="pg_underlier" length="30" />
+        </property>
+    </class>
+</hibernate-mapping>
+

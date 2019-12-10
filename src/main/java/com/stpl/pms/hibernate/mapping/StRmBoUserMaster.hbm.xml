@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+	<class name="com.stpl.pms.hibernate.mapping.StRmBoUserMaster"
+		table="st_rm_bo_user_master">
+		<id name="userId" type="java.lang.Integer">
+			<column name="user_id" />
+			<generator class="native" />
+		</id>
+		<property name="parentUserId" type="java.lang.Integer">
+			<column name="parent_user_id" not-null="true" />
+		</property>
+
+		<many-to-one name="stRmBoRoleMaster"
+			class="com.stpl.pms.hibernate.mapping.StRmBoRoleMaster" fetch="join"
+			cascade="all" lazy="false" column="role_id">
+		</many-to-one>
+
+		<property name="domainId" type="java.lang.Short">
+			<column name="domain_id" not-null="true" />
+		</property>
+		<property name="registrationDate" type="java.sql.Timestamp">
+			<column name="registration_date" length="19" not-null="true" />
+		</property>
+		<property name="lastLoginDate" type="java.sql.Timestamp">
+			<column name="last_login_date" length="19" not-null="true" />
+		</property>
+		<property name="userName" type="java.lang.String">
+			<column name="user_name" length="50" not-null="true" />
+		</property>
+		<property name="password" type="java.lang.String">
+			<column name="password" length="50" not-null="true" />
+		</property>
+		<property name="autoPassword" type="java.lang.Short">
+			<column name="auto_password" not-null="true" />
+		</property>
+		<property name="status" type="java.lang.String">
+			<column name="status" length="9" not-null="true" />
+		</property>
+		<property name="secQues" type="java.lang.String">
+			<column name="sec_ques" length="100" not-null="true" />
+		</property>
+		<property name="secAns" type="java.lang.String">
+			<column name="sec_ans" length="100" not-null="true" />
+		</property>
+		<property name="isRoleHead" type="java.lang.String">
+			<column name="is_role_head" length="2" />
+		</property>
+		<property name="lastLoginIp" type="java.lang.String">
+			<column name="last_login_ip" length="15" />
+		</property>
+		<property name="userType" type="java.lang.String">
+			<column name="user_type" length="10" />
+		</property>
+		<property name="invalidLoginTry" type="java.lang.Short">
+			<column name="invalid_login_try"></column>
+		</property>
+		<property name="deviceId" type="java.lang.String">
+			<column name="device_id"></column>
+		</property>
+		<property name="userAccessType" type="java.lang.String">
+			<column name="user_access_type"></column>
+		</property>
+		<one-to-one name="userInfo" class="com.stpl.pms.hibernate.mapping.StRmBoUserInfo" property-ref="userId" cascade="all" fetch="select" lazy="proxy"></one-to-one>
+	</class>
+</hibernate-mapping>

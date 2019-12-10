@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StCshTpWalletResponse" table="st_csh_tp_wallet_response" >
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+        <property name="tpReference" type="java.lang.String">
+            <column name="tp_reference" length="15" />
+        </property>
+        <property name="weaverReference" type="java.lang.String">
+            <column name="weaver_reference" length="15" />
+        </property>
+        <property name="responseDesc" type="java.lang.String">
+            <column name="response_desc" length="200" />
+        </property>
+        <property name="extra" type="java.lang.String">
+            <column name="extra" />
+        </property>
+        <property name="requestType" type="java.lang.String">
+            <column name="request_type" length="15" />
+        </property>
+        <property name="responseCode" type="java.lang.String">
+            <column name="response_code" length="15" />
+        </property>
+        <property name="responseMoment" type="java.sql.Timestamp">
+            <column name="response_moment" />
+        </property>
+        <property name="discriminant" type="java.lang.String">
+            <column name="discriminant" length="15" />
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="8" />
+        </property>
+    </class>
+</hibernate-mapping>

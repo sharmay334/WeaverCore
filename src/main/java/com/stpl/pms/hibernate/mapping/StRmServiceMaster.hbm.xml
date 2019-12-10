@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmServiceMaster" table="st_rm_service_master">
+<!--         <cache usage="read-write" region="StRmServiceMasterCache"/> -->
+        <id name="serviceId" type="java.lang.Short">
+            <column name="service_id" />
+            <generator class="native" />
+        </id>
+        <property name="serviceName" type="java.lang.String">
+            <column name="service_name" length="30">
+                <comment>name of the service</comment>
+            </column>
+        </property>
+        <property name="serviceCode" type="java.lang.String">
+            <column name="service_code" length="5" not-null="true">
+                <comment>code of the service</comment>
+            </column>
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="8" not-null="true">
+                <comment>serive is active or not</comment>
+            </column>
+        </property>
+        <property name="privRepTable" type="java.lang.String">
+            <column name="priv_rep_table" length="50" />
+        </property>
+        <property name="menuMasterTable" type="java.lang.String">
+            <column name="menu_master_table" length="50" />
+        </property>
+    </class>
+</hibernate-mapping>

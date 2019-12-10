@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRmBoRolePrivMapping" table="st_rm_bo_role_priv_mapping">
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+        <property name="roleId" type="java.lang.Integer">
+            <column name="role_id">
+                <comment>the id of the role</comment>
+            </column>
+        </property>
+        <property name="privId" type="java.lang.Integer">
+            <column name="priv_id">
+                <comment>the id of the privilege</comment>
+            </column>
+        </property>
+        <property name="sdmId" type="java.lang.Short">
+            <column name="sdm_id">
+                <comment>id from the service delivery master i.e to which service it is associated to?</comment>
+            </column>
+        </property>
+        <property name="status" type="java.lang.String">
+            <column name="status" length="8" not-null="true">
+                <comment>role is active or inactive</comment>
+            </column>
+        </property>
+    </class>
+</hibernate-mapping>

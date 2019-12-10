@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+<!-- Generated 6 Feb, 2018 12:12:55 PM by Hibernate Tools 3.5.0.Final -->
+<hibernate-mapping>
+	<class name="com.stpl.pms.hibernate.mapping.StTpCustomMsg" table="st_tp_custom_msg">
+		<id name="id" type="long">
+			<column name="id" />
+			<generator class="native" />
+		</id>
+		<property name="statusCode" type="java.lang.String">
+			<column name="status_code" length="15" />
+		</property>
+		<property name="customMsg" type="java.lang.String">
+			<column name="custom_msg" length="200" />
+		</property>
+		<property name="preferredWallet" type="java.lang.String">
+			<column name="preferred_wallet" length="15" />
+		</property>
+	</class>
+</hibernate-mapping>

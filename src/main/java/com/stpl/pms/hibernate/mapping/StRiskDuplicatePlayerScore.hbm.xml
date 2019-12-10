@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StRiskDuplicatePlayerScore" table="st_risk_duplicate_player_score">
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="increment"/>
+        </id>
+        <property name="newPlayerId" type="java.lang.Long">
+            <column name="new_player_id" />
+        </property>
+        <property name="oldPlayerId" type="java.lang.Long">
+            <column name="old_player_id" />
+        </property>
+        <property name="regDupScore" type="java.lang.Double">
+            <column name="reg_dup_score" precision="10" />
+        </property>
+        <property name="regVerifyDate" type="java.sql.Timestamp">
+            <column name="reg_verify_date" length="19" />
+        </property>
+        <property name="regStatus" type="java.lang.String">
+            <column name="reg_status" length="9" />
+        </property>
+        <property name="regUserId" type="java.lang.Integer">
+            <column name="reg_user_id" />
+        </property>
+        <property name="depoDupScore" type="java.lang.Double">
+            <column name="depo_dup_score" precision="10" />
+        </property>
+        <property name="depoVerifyDate" type="java.sql.Timestamp">
+            <column name="depo_verify_date" length="19" />
+        </property>
+        <property name="depoStatus" type="java.lang.String">
+            <column name="depo_status" length="9" />
+        </property>
+        <property name="depoUserId" type="java.lang.Integer">
+            <column name="depo_user_id" />
+        </property>
+        <property name="withDupScore" type="java.lang.Double">
+            <column name="with_dup_score" precision="10" />
+        </property>
+        <property name="withVerifyDate" type="java.sql.Timestamp">
+            <column name="with_verify_date" length="19" />
+        </property>
+        <property name="withStatus" type="java.lang.String">
+            <column name="with_status" length="9" />
+        </property>
+        <property name="withUserId" type="java.lang.Integer">
+            <column name="with_user_id" />
+        </property>
+    </class>
+</hibernate-mapping>

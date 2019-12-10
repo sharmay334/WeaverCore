@@ -1,0 +1,23 @@
+package com.stpl.pms.utility;
+
+public enum WithoutLoginAction {
+	bo_lm_login, bo_user_sessionTimeOut, bo_lm_forgotPassword, assignPriv,
+	com_stpl_pms_bo_rummy, st_pms_txn_portal_plrTxnRequest, st_pms_txn_portal_plrConfirmWagerTxnRequest,st_pms_txn_portal_plrBulkTxnRequest,st_bo_pm_checkPlayerEligibility, //Rummy Actions
+	st_pms_cashier_portal_depositRequest, st_pms_cashier_portal_depositResponseCitrus,  //Cashier Actions
+	st_pms_cashier_portal_depositResponseTSPL, st_pms_cashier_portal_depositResponseAtom, 
+	st_pms_cashier_portal_depositResponseSafecharge, st_pms_cashier_portal_fillCashCollectionAddress, 
+	st_pms_cashier_portal_cashCollnRequest, st_pms_cashier_portal_depositResponseGharPay, st_pms_cashier_portal_depositResponsePaycash, st_pms_cashier_portal_depositResponseEBS,
+	st_pms_cashier_portal_plrDepositAgstCancelWdr, st_pms_cashier_portal_olaDepoReqConfirm,st_pms_cashier_portal_depositResponsePAYU,st_pms_cashier_portal_depositResponsePAYUMoney,
+	st_pms_api_rest_weaverServiceRequest,st_pms_api_rest_weaverTxnReport,st_pms_cashier_portal_depositResponseMPower,
+	st_pms_cashier_portal_depositResponseTechprocess, bo_lm_logout,weaverDomainInfo,st_portal_thirdPartyLogin,st_pms_txn_plrPaymentCorrection,st_portal_thirdPartyLogout,st_pms_save_nickName,
+	st_pms_cashier_portal_depositResponsePayTm,st_pms_cashier_portal_depositResponsePaga,st_pms_cashier_portal_depositResponseInterswitch,st_pms_cashier_portal_depositResponseCashFree;
+	
+	public static boolean contains(String actionName) {
+		for (WithoutLoginAction obj : WithoutLoginAction.values()) {
+			if ((obj.name()).equals(actionName)) {
+				return true;
+			}
+		}
+		return false;
+	}
+}

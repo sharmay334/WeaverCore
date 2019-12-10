@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class name="com.stpl.pms.hibernate.mapping.StGenGstRate" table="st_gen_gst_rate">
+        <id name="id" type="java.lang.Integer">
+            <column name="id" />
+            <generator class="native" />
+        </id>
+       
+        <property name="gstRate" type="java.lang.Float">
+            <column name="gst_rate" length="10" not-null="true" />
+        </property>
+                <property name="gstApplyDate" type="java.sql.Timestamp">
+            <column name="gst_date" length="19"   not-null="true" />
+        </property> 
+        <property name="creationTime" type="java.sql.Timestamp">
+            <column name="creation_time" length="19" not-null="true" />
+        </property>
+
+
+    </class>
+</hibernate-mapping>
