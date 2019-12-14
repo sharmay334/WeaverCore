@@ -210,12 +210,13 @@ public class UserMgmtController {
 				tempEmailContentMap.put("ScratchUrl", "www.scratchweaver.com");
 				System.out.println("PASSWORD IS:::::::::::::::"+password);
 				
+				
+				  CommMgmtController.callSendMail(emailContentMap, "BO_USER_REGISTRATION",
+				  domainId, (short) 1, creatorUserId, session);
 				/*
-				 * CommMgmtController.callSendMail(emailContentMap, "BO_USER_REGISTRATION",
-				 * domainId, (short) 1, creatorUserId, session);
 				 * CommMgmtController.callSendMail(tempEmailContentMap, "BO_USER_REG_EMAIL",
 				 * domainId, (short) 1, creatorUserId, session);
-				 */
+				 */ 
 				
 				//CommMgmtController.callSendSms(TempuserdetailBean,"BO_USER_REG_SMS",session,emailContentMap);
 				

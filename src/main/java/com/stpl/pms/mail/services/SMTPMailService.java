@@ -23,8 +23,8 @@ public class SMTPMailService {
 
 	private static final Logger logger = Logger.getLogger(SMTPMailService.class);
 	private static SMTPMailService instance;
-	private static final String SMTP_AUTH_USER = "noreply.weaver.scratch@xskthcm.com";
-	private static final String SMTP_AUTH_PWD = "xoso@123456";
+	private static final String SMTP_AUTH_USER = "itgs.engine@gmail.com";
+	private static final String SMTP_AUTH_PWD = "123456789itgs";
 
 	public SMTPMailService() {
 	}
@@ -58,11 +58,12 @@ public class SMTPMailService {
 			message.setSentDate(new Date());
 			// Send mail
 			Transport.send(message);
-
+				System.out.println("sent");
 			logger.info("SMTP mail sent SUCCESS....");
 
 		} catch (Exception e) {
 			logger.error(e);
+			System.out.println(e);
 			logger.info("SMTP mail sent FAILED....");
 
 		}
@@ -234,12 +235,12 @@ public class SMTPMailService {
 
 	public static void main(String[] args) {
 
-		String toEmail = "yash.sharma@skilrock.com";
-		String fromEmail = "noreply.weaver.scratch@xskthcm.com";
+		String toEmail = "gmonu6171@gmail.com";
+		String fromEmail = "itgs.engine@gmail.com";
 		String subject = "HELLO TESTING";
 		String message = "test message";
 		String fromName = "Test";
-		String mailSmtpHost = "mail.xskthcm.com";
+		String mailSmtpHost = "smtp.gmail.com";
 		SMTPMailService.getInstance().sendMail(fromEmail, fromName, toEmail, fromEmail, subject, message, mailSmtpHost);
 System.out.println("MAIL SENT SUCCESS!!!!");
 	}
