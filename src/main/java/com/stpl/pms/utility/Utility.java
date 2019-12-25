@@ -1352,7 +1352,7 @@ public class Utility {
     }
 
 public static String getClientName(){
-		return Utility.getEnvironmentProperty("client","ScratchWeaver");
+		return Utility.getEnvironmentProperty("client","CRM");
 	}
 	public static String getEnvironmentProperty(String key,String defaultStr){
 		String value = null;
