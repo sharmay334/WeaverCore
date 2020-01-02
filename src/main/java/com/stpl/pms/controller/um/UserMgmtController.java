@@ -12,6 +12,7 @@ import javax.servlet.http.HttpSession;
 import org.apache.xmlbeans.impl.xb.xsdschema.RestrictionDocument.Restriction;
 import org.hibernate.Criteria;
 import org.hibernate.HibernateException;
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.criterion.Restrictions;
@@ -25,6 +26,7 @@ import com.stpl.pms.exception.PMSErrorCode;
 import com.stpl.pms.exception.PMSErrorMessage;
 import com.stpl.pms.exception.PMSException;
 import com.stpl.pms.hibernate.factory.HibernateSessionFactory;
+import com.stpl.pms.hibernate.mapping.CreateCompany;
 import com.stpl.pms.hibernate.mapping.StRmBoUserInfo;
 import com.stpl.pms.hibernate.mapping.StRmBoUserMaster;
 import com.stpl.pms.javabeans.UserDetailsBean;
@@ -142,41 +144,47 @@ public class UserMgmtController {
 			}
 		}
 	}
-    public void sendSmsService(String smsType,UserDetailsBean usrdetBean,String gameName,int gameNo,int batchNo){
-    	try{
-    		Session session = HibernateSessionFactory.getSession();
-    		Map<String,String> smscontentMap = new HashMap<>();
-    		
-    		smscontentMap.put("FirstName", usrdetBean.getFirstName());
-    		smscontentMap.put("GameName", gameName);
-    		smscontentMap.put("GameNo", String.valueOf(gameNo));
-    		smscontentMap.put("BatchNo", String.valueOf(batchNo));
-    		smscontentMap.put("UserName", usrdetBean.getUserName());
-    		smscontentMap.put("Passcode", ZipFileProtection.ZIP_LOGIN_PASSWORD);
-    		
-    		
-    		
-    		CommMgmtController.callSendSms(usrdetBean,smsType,session,smscontentMap);
-    	}catch(Exception e){e.printStackTrace();}
-    }
-    public void sendSmsServiceBO(String smsType,UserDetailsBean usrdetBean,String gameName,int gameNo,int batchNo,String username,String firstName){
-    	try{
-    		Session session = HibernateSessionFactory.getSession();
-    		Map<String,String> smscontentMap = new HashMap<>();
-    		
-    		smscontentMap.put("FirstName", firstName);
-    		smscontentMap.put("GameName", gameName);
-    		smscontentMap.put("GameNo", String.valueOf(gameNo));
-    		smscontentMap.put("BatchNo", String.valueOf(batchNo));
-    		smscontentMap.put("UserName", username);
-    		if(ZipFileProtection.ZIP_LOGIN_PASSWORD!=null){
-    			smscontentMap.put("Passcode", ZipFileProtection.ZIP_LOGIN_PASSWORD.substring(4));  
-    		}
-    		 		
-    		CommMgmtController.callSendSms(usrdetBean,smsType,session,smscontentMap);
-    		
-    	}catch(Exception e){e.printStackTrace();}
-    }
+
+	public void sendSmsService(String smsType, UserDetailsBean usrdetBean, String gameName, int gameNo, int batchNo) {
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Map<String, String> smscontentMap = new HashMap<>();
+
+			smscontentMap.put("FirstName", usrdetBean.getFirstName());
+			smscontentMap.put("GameName", gameName);
+			smscontentMap.put("GameNo", String.valueOf(gameNo));
+			smscontentMap.put("BatchNo", String.valueOf(batchNo));
+			smscontentMap.put("UserName", usrdetBean.getUserName());
+			smscontentMap.put("Passcode", ZipFileProtection.ZIP_LOGIN_PASSWORD);
+
+			CommMgmtController.callSendSms(usrdetBean, smsType, session, smscontentMap);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void sendSmsServiceBO(String smsType, UserDetailsBean usrdetBean, String gameName, int gameNo, int batchNo,
+			String username, String firstName) {
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Map<String, String> smscontentMap = new HashMap<>();
+
+			smscontentMap.put("FirstName", firstName);
+			smscontentMap.put("GameName", gameName);
+			smscontentMap.put("GameNo", String.valueOf(gameNo));
+			smscontentMap.put("BatchNo", String.valueOf(batchNo));
+			smscontentMap.put("UserName", username);
+			if (ZipFileProtection.ZIP_LOGIN_PASSWORD != null) {
+				smscontentMap.put("Passcode", ZipFileProtection.ZIP_LOGIN_PASSWORD.substring(4));
+			}
+
+			CommMgmtController.callSendSms(usrdetBean, smsType, session, smscontentMap);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	public String assignGroups(int creatorUserId, String[] rolePriv, short creatorRoleId, UserDetailsBean usrdetBean,
 			int[] mappingId, int[] privCount, String ipAddress, short domainId) throws PMSException {
 		String password = null;
@@ -191,8 +199,8 @@ public class UserMgmtController {
 			// if (privFunctionBean.getFunctionSet().contains("assignGroups")) {
 			password = daoImpl.assignGroups(creatorUserId, rolePriv, creatorRoleId, usrdetBean, mappingId, privCount,
 					ipAddress, domainId, session);
- 			if (!password.equalsIgnoreCase("USER_ALREADY_EXIST")) {
- 				tx.commit();
+			if (!password.equalsIgnoreCase("USER_ALREADY_EXIST")) {
+				tx.commit();
 				Map<String, String> emailContentMap = new LinkedHashMap<String, String>();
 				Map<String, String> tempEmailContentMap = new LinkedHashMap<String, String>();
 				emailContentMap.put("EmailId", usrdetBean.getEmailId());
@@ -200,33 +208,32 @@ public class UserMgmtController {
 				emailContentMap.put("UserName", usrdetBean.getUserName());
 				emailContentMap.put("UserPassword", password);
 				emailContentMap.put("ScratchUrl", "www.scratchweaver.com");
-				//CommMgmtController.callSendSms(usrdetBean,"BO_USER_REGISTRATION",session,emailContentMap);
-				
-				TempuserdetailBean = gameMgmtController.getParentUserData(usrdetBean.getUserName(),usrdetBean);
+				// CommMgmtController.callSendSms(usrdetBean,"BO_USER_REGISTRATION",session,emailContentMap);
+
+				TempuserdetailBean = gameMgmtController.getParentUserData(usrdetBean.getUserName(), usrdetBean);
 				tempEmailContentMap.put("EmailId", TempuserdetailBean.getEmailId());
 				tempEmailContentMap.put("FirstName", usrdetBean.getFirstName());
 				tempEmailContentMap.put("UserName", usrdetBean.getUserName());
 				tempEmailContentMap.put("UserPassword", password);
 				tempEmailContentMap.put("ScratchUrl", "www.scratchweaver.com");
-				System.out.println("PASSWORD IS:::::::::::::::"+password);
-				
-				
-				  CommMgmtController.callSendMail(emailContentMap, "BO_USER_REGISTRATION",
-				  domainId, (short) 1, creatorUserId, session);
+				System.out.println("PASSWORD IS:::::::::::::::" + password);
+
+				CommMgmtController.callSendMail(emailContentMap, "BO_USER_REGISTRATION", domainId, (short) 1,
+						creatorUserId, session);
 				/*
 				 * CommMgmtController.callSendMail(tempEmailContentMap, "BO_USER_REG_EMAIL",
 				 * domainId, (short) 1, creatorUserId, session);
-				 */ 
-				
-				//CommMgmtController.callSendSms(TempuserdetailBean,"BO_USER_REG_SMS",session,emailContentMap);
-				
+				 */
+
+				// CommMgmtController.callSendSms(TempuserdetailBean,"BO_USER_REG_SMS",session,emailContentMap);
+
 				// CommMgmtController commMgmtController = new
 				// CommMgmtController();
 				// commMgmtController.sendMailBO(usrdetBean.getEmailId(),emailMsgTxt);
 
 			}
 			// }
-			
+
 		} catch (ClassNotFoundException e) {
 			e.printStackTrace();
 			if (tx != null && tx.isActive())
@@ -392,16 +399,16 @@ public class UserMgmtController {
 			}
 		}
 	}
-	
-	public void editBOUserDetails(int userId, String emailId, String phoneNbr,String lastName,String status, String type,Double val)
-			throws PMSException {
+
+	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String lastName, String status,
+			String type, Double val) throws PMSException {
 		Session session = null;
 		Transaction tx = null;
 		try {
 			UserMgmtDaoImpl daoImpl = new UserMgmtDaoImpl();
 			session = HibernateSessionFactory.getSession();
 			tx = session.beginTransaction();
-			daoImpl.editBOUserDetails(userId, emailId, phoneNbr,lastName, status, type, session);
+			daoImpl.editBOUserDetails(userId, emailId, phoneNbr, lastName, status, type, session);
 			tx.commit();
 			String msgFor = "You are block for our BackOffice,Contact to Admin.";
 			try {
@@ -450,21 +457,21 @@ public class UserMgmtController {
 			}
 		}
 	}
-	
-	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String status, String type,String emailType)
-			throws PMSException {
+
+	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String status, String type,
+			String emailType) throws PMSException {
 		Session session = null;
 		Transaction tx = null;
 		try {
 			UserMgmtDaoImpl daoImpl = new UserMgmtDaoImpl();
 			session = HibernateSessionFactory.getSession();
 			tx = session.beginTransaction();
-			//daoImpl.editBOUserDetails(userId, emailId, phoneNbr, status, type, session);
+			// daoImpl.editBOUserDetails(userId, emailId, phoneNbr, status, type, session);
 			tx.commit();
 			String msgFor = "You are block for our BackOffice,Contact to Admin.";
 			try {
 				if ("INACTIVE".equals(status) || "TERMINATE".equals(status) || "downloadCase".equalsIgnoreCase(status))
-					CommMgmtController.boMailSending(emailId, msgFor, (short) 1, (short) 1, session,emailType);
+					CommMgmtController.boMailSending(emailId, msgFor, (short) 1, (short) 1, session, emailType);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -479,14 +486,17 @@ public class UserMgmtController {
 			}
 		}
 	}
-	
-	public void sendMailITGS(Map<String,String> emailContentMap,String emailType,UserInfoBean userInfoBean){
-		try{
-			CommMgmtEmailController.sendMail(emailContentMap,emailType,userInfoBean);  
-		}catch(Exception e){e.printStackTrace();}
+
+	public void sendMailITGS(Map<String, String> emailContentMap, String emailType, UserInfoBean userInfoBean) {
+		try {
+			CommMgmtEmailController.sendMail(emailContentMap, emailType, userInfoBean);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
-	
-	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String status, String gameName,String emailType,UserInfoBean userInfoBean,int gameNo,int batchNO,String mailMsg,String userEmail)
+
+	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String status, String gameName,
+			String emailType, UserInfoBean userInfoBean, int gameNo, int batchNO, String mailMsg, String userEmail)
 			throws PMSException {
 		Session session = null;
 		Transaction tx = null;
@@ -494,12 +504,13 @@ public class UserMgmtController {
 			UserMgmtDaoImpl daoImpl = new UserMgmtDaoImpl();
 			session = HibernateSessionFactory.getSession();
 			tx = session.beginTransaction();
-			//daoImpl.editBOUserDetails(userId, emailId, phoneNbr, status, type, session);
+			// daoImpl.editBOUserDetails(userId, emailId, phoneNbr, status, type, session);
 			tx.commit();
 			String msgFor = "You are block for our BackOffice,Contact to Admin.";
 			try {
 				if ("INACTIVE".equals(status) || "TERMINATE".equals(status) || "useractivity".equalsIgnoreCase(status))
-					CommMgmtController.boMailSending(emailId, msgFor, (short) 1, (short) 1, session,emailType,userInfoBean,gameNo,batchNO,mailMsg,userEmail);
+					CommMgmtController.boMailSending(emailId, msgFor, (short) 1, (short) 1, session, emailType,
+							userInfoBean, gameNo, batchNO, mailMsg, userEmail);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -514,20 +525,22 @@ public class UserMgmtController {
 			}
 		}
 	}
-	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String status, String type,String emailType,UserInfoBean userInfoBean)
-			throws PMSException {
+
+	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String status, String type,
+			String emailType, UserInfoBean userInfoBean) throws PMSException {
 		Session session = null;
 		Transaction tx = null;
 		try {
 			UserMgmtDaoImpl daoImpl = new UserMgmtDaoImpl();
 			session = HibernateSessionFactory.getSession();
 			tx = session.beginTransaction();
-			//daoImpl.editBOUserDetails(userId, emailId, phoneNbr, status, type, session);
+			// daoImpl.editBOUserDetails(userId, emailId, phoneNbr, status, type, session);
 			tx.commit();
 			String msgFor = "You are block for our BackOffice,Contact to Admin.";
 			try {
 				if ("INACTIVE".equals(status) || "TERMINATE".equals(status) || "printCase".equalsIgnoreCase(status))
-					CommMgmtController.boMailSending(emailId, msgFor, (short) 1, (short) 1, session,emailType,userInfoBean);
+					CommMgmtController.boMailSending(emailId, msgFor, (short) 1, (short) 1, session, emailType,
+							userInfoBean);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
@@ -697,92 +710,137 @@ public class UserMgmtController {
 
 	public List<String> fetchRoleHeadUsers(int userId) {
 		// TODO Auto-generated method stub
-		try
-		{
+		try {
 			List<String> usersList = new ArrayList<>();
 			Session session = HibernateSessionFactory.getSession();
 			Criteria criteria = session.createCriteria(StRmBoUserMaster.class);
-			criteria.add(Restrictions.eq("parentUserId",userId));
+			criteria.add(Restrictions.eq("parentUserId", userId));
 			List<StRmBoUserMaster> result = criteria.list();
-			
-			if(result!=null)
-			{
-				for(StRmBoUserMaster obj:result)
-				{
+
+			if (result != null) {
+				for (StRmBoUserMaster obj : result) {
 					usersList.add(obj.getUserName());
 				}
-				
+
 			}
 			return usersList;
-			
-			
-		}catch(Exception e){e.printStackTrace();}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return null;
-	}
-	public List<StRmBoUserInfo> getUserInformation(int userId)
-	{
-		try
-		{
-			Session session = HibernateSessionFactory.getSession();
-			Criteria criteria = session.createCriteria(StRmBoUserInfo.class);
-			criteria.add(Restrictions.eq("userId",userId));
-			List<StRmBoUserInfo> result = criteria.list(); 
-			return result;
-		}catch(Exception e){e.printStackTrace();}
-		return null;
-		
 	}
 
-	public String getUserMailId(int userId) {
-		// TODO Auto-generated method stub
-		try{
+	public List<StRmBoUserInfo> getUserInformation(int userId) {
+		try {
 			Session session = HibernateSessionFactory.getSession();
 			Criteria criteria = session.createCriteria(StRmBoUserInfo.class);
 			criteria.add(Restrictions.eq("userId", userId));
 			List<StRmBoUserInfo> result = criteria.list();
-			if(result!=null){
-				for(StRmBoUserInfo obj:result){
+			return result;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+
+	}
+
+	public String getUserMailId(int userId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(StRmBoUserInfo.class);
+			criteria.add(Restrictions.eq("userId", userId));
+			List<StRmBoUserInfo> result = criteria.list();
+			if (result != null) {
+				for (StRmBoUserInfo obj : result) {
 					return obj.getEmailId();
 				}
 			}
-		}catch(Exception e){e.printStackTrace();}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 
 	public String getUserFirstName(int userId) {
 		// TODO Auto-generated method stub
-		try{
+		try {
 			Session session = HibernateSessionFactory.getSession();
 			Criteria criteria = session.createCriteria(StRmBoUserInfo.class);
 			criteria.add(Restrictions.eq("userId", userId));
 			List<StRmBoUserInfo> result = criteria.list();
-			if(result!=null){
-				for(StRmBoUserInfo obj : result)
+			if (result != null) {
+				for (StRmBoUserInfo obj : result)
 					return obj.getFirstName();
 			}
-			
-		}catch(Exception e){e.printStackTrace();}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return null;
 	}
 
-	public UserDetailsBean getUserInfoBeanPhone(String userEmail,UserDetailsBean userDetailsBean) {
+	public UserDetailsBean getUserInfoBeanPhone(String userEmail, UserDetailsBean userDetailsBean) {
 		// TODO Auto-generated method stub
-		try{
+		try {
 			Session session = HibernateSessionFactory.getSession();
 			Criteria criteria = session.createCriteria(StRmBoUserInfo.class);
 			criteria.add(Restrictions.eq("emailId", userEmail));
 			List<StRmBoUserInfo> result = criteria.list();
-			if(result!=null){
-				for(StRmBoUserInfo obj:result){
+			if (result != null) {
+				for (StRmBoUserInfo obj : result) {
 					userDetailsBean.setPhoneNbr(obj.getPhoneNum());
 					userDetailsBean.setEmailId(obj.getEmailId());
 					userDetailsBean.setFirstName(obj.getFirstName());
-					
-					
+
 				}
 				return userDetailsBean;
 			}
-		}catch(Exception e){e.printStackTrace();}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return null;
+	}
+
+	public CreateCompany showCompanyDetails(Integer company_id) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(CreateCompany.class);
+			criteria.add(Restrictions.eq("companyId", company_id));
+			List<CreateCompany> result = criteria.list();
+			return result.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean deleteCompany(String name) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "delete from st_rm_create_company where name='" + name + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean editCompany(CreateCompany companyBean) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			session.update(companyBean);
+			session.flush();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
 	}
 }

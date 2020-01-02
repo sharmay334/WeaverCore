@@ -24,6 +24,7 @@ import com.stpl.pms.daoImpl.commonMethods.CommonMethodDaoImpl;
 import com.stpl.pms.daoImpl.gl.GameLobbyDaoImpl;
 import com.stpl.pms.exception.PMSException;
 import com.stpl.pms.hibernate.factory.HibernateSessionFactory;
+import com.stpl.pms.hibernate.mapping.CreateCompany;
 import com.stpl.pms.hibernate.mapping.Itgs;
 import com.stpl.pms.hibernate.mapping.StPortalLobbyMaster;
 import com.stpl.pms.hibernate.mapping.StRmBoAllowedIp;
@@ -78,6 +79,23 @@ public class GameLobbyController {
 
 	}
 
+	public Boolean addNewCompany(CreateCompany company) {
+		Transaction tx = null;
+		Session session = null;
+		try {
+			session = HibernateSessionFactory.getSession();
+			tx = session.beginTransaction();
+			session.save(company);
+			session.flush();
+			tx.commit();
+		} catch (Exception e) {
+			e.printStackTrace();
+			tx.rollback();
+			return false;
+		}
+		return true;
+	}
+
 	public List<Object[]> getGameSearchData(int gameNO, String userName, String gameName, Double ticket_Price) {
 
 		try {
@@ -114,8 +132,8 @@ public class GameLobbyController {
 			List<Object[]> result = query2.list();
 			if (result != null) {
 				for (Object[] obj : result) {
-					ticketData.put(obj[0].toString(),obj[1].toString());
-				} //AES.decrypt(obj[1].toString(), AES.KEY + obj[0].toString())
+					ticketData.put(obj[0].toString(), obj[1].toString());
+				} // AES.decrypt(obj[1].toString(), AES.KEY + obj[0].toString())
 				return ticketData;
 			} else {
 				return null;
@@ -358,7 +376,7 @@ public class GameLobbyController {
 			byte[] bytespdc = IOUtils.toByteArray(inputStream.get("pdc"));
 			byte[] bytesav = IOUtils.toByteArray(inputStream.get("av"));
 			byte[] bytesls = IOUtils.toByteArray(inputStream.get("ls"));
-			
+
 			String ts = new String(bytests);
 			String ge = new String(bytesge);
 			String pd = new String(pdfile);
@@ -405,12 +423,12 @@ public class GameLobbyController {
 				String insertquery1 = "insert into st_rm_game_user_mapping SET batch_no=" + batchNo + ",user_id="
 						+ user_id + ",game_no=" + gameNO + ",status='Initiated',save_mode='submit'";
 
-				
-				if(ServerStatusBean.SERVER_TYPE.equals("P")) {
+				if (ServerStatusBean.SERVER_TYPE.equals("P")) {
 					byte[] front_img = IOUtils.toByteArray(inputStream.get("frontImg"));
 					byte[] back_img = IOUtils.toByteArray(inputStream.get("backImg"));
 					byte[] scratched_img = IOUtils.toByteArray(inputStream.get("scratchedImg"));
-					String insertQueryTicketImg = "update itgs_input SET front_img=?,back_img=?,scratched_img=? where game_no=" + gameNO +" and batch_no="+batchNo;
+					String insertQueryTicketImg = "update itgs_input SET front_img=?,back_img=?,scratched_img=? where game_no="
+							+ gameNO + " and batch_no=" + batchNo;
 					Query query3 = session.createSQLQuery(insertQueryTicketImg);
 					query3.setBinary(0, front_img);
 					query3.setBinary(1, back_img);
@@ -418,25 +436,22 @@ public class GameLobbyController {
 					Query query = session.createSQLQuery(insertquery);
 					Query query1 = session.createSQLQuery(insertquery2);
 					Query query2 = session.createSQLQuery(insertquery1);
-					
+
 					query.executeUpdate();
 					query1.executeUpdate();
 					query2.executeUpdate();
 					query3.executeUpdate();
-						
-				}
-				else {
+
+				} else {
 					Query query = session.createSQLQuery(insertquery);
 					Query query1 = session.createSQLQuery(insertquery2);
 					Query query2 = session.createSQLQuery(insertquery1);
-					
+
 					query.executeUpdate();
 					query1.executeUpdate();
 					query2.executeUpdate();
 				}
-				
-				
-				
+
 				tx.commit();
 				return "success" + batchNo;
 			} else {
@@ -1128,6 +1143,80 @@ public class GameLobbyController {
 			e.printStackTrace();
 		}
 
+	}
+
+	public List<String> getCompanyNameList() {
+		// TODO Auto-generated method stub
+		List<String> compNameList = null;
+		try {
+			compNameList = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(CreateCompany.class);
+			List<CreateCompany> result = criteria.list();
+			if (!result.isEmpty()) {
+				for (CreateCompany company : result) {
+					compNameList.add(company.getName());
+				}
+				return compNameList;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return compNameList;
+	}
+
+	public List<CreateCompany> getCompanyNameList(String name) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(CreateCompany.class);
+			criteria.add(Restrictions.eq("name", name));
+			List<CreateCompany> result = criteria.list();
+			if (!result.isEmpty()) {
+
+				return result;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public List<String> getGroupNamesList() {
+		// TODO Auto-generated method stub
+		try {
+			List<String> list = new ArrayList<>();
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "select * from st_rm_acc_group_master order by group_id";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null) {
+				for (Object[] obj : result) {
+					list.add(obj[1].toString());
+				}
+				return list;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public void insertGroup(String groupName, String group_under, String sub_ledger, String deb_cred_bln_rep, String calc,
+			String pur_invoice) {
+		// TODO Auto-generated method stub
+				Session session = null;
+				Transaction txn = null;
+		try {
+				session = HibernateSessionFactory.getSession();
+				txn = session.beginTransaction();
+				
+				String queryString = "INSERT INTO st_rm_acc_group_master";
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 }

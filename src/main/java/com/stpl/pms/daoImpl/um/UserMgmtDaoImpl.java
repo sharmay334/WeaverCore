@@ -218,10 +218,39 @@ public class UserMgmtDaoImpl {
 		userInfo.setLastName(usrdetBean.getLastName());
 		userInfo.setPhoneNum(usrdetBean.getPhoneNbr());
 		userInfo.setAddressLine1("address");
-		userInfo.setCity("gurgaon");
+		userInfo.setCity(usrdetBean.getCity());
 		userInfo.setCountryCode("IN");
 		userInfo.setStateCode("RJ");
 		userInfo.setPostalCode("122002");
+		userInfo.setCountry(usrdetBean.getCountry());
+		userInfo.setState(usrdetBean.getState());
+		userInfo.setPincode(usrdetBean.getPincode());
+		userInfo.setDoj(usrdetBean.getDoj());
+		userInfo.setDol(usrdetBean.getDol());
+		userInfo.setDob(usrdetBean.getDob());
+		userInfo.setPanNumber(usrdetBean.getPanNumber());
+		userInfo.setAadharNumber(usrdetBean.getAadharNumber());
+		userInfo.setVoterNumber(usrdetBean.getVoterNumber());
+		userInfo.setPassportNumber(usrdetBean.getPassportNumber());
+		userInfo.setFatherName(usrdetBean.getFatherName());
+		userInfo.setAadharDoc(usrdetBean.getAadharDoc());
+		userInfo.setAadharNumber(usrdetBean.getAadharNumber());
+		userInfo.setAddressDoc(usrdetBean.getAddressDoc());
+		userInfo.setAadharDoc(usrdetBean.getAddressDoc());
+		userInfo.setDrivingDoc(usrdetBean.getDrivingDoc());
+		userInfo.setEduCertificate(usrdetBean.getEduCertificate());
+		userInfo.setExpCertificate(usrdetBean.getExpCertificate());
+		userInfo.setOldSalarySlip(usrdetBean.getOldSalarySlip());
+		userInfo.setPhoto_doc(usrdetBean.getPhoto_doc());
+		userInfo.setPanDoc(usrdetBean.getPanDoc());
+		userInfo.setVoterDoc(usrdetBean.getVoterDoc());
+		userInfo.setDrivingDoc(usrdetBean.getDrivingDoc());
+		userInfo.setPassbookDoc(usrdetBean.getPassbookDoc());
+		userInfo.setBloodGroup(usrdetBean.getBloodGroup());
+		userInfo.setBranch(usrdetBean.getBranch());
+		userInfo.setCurrentAddress(usrdetBean.getCurrentAddress());
+		userInfo.setPermanentAddress(usrdetBean.getPermanentAddress());
+		
 		//userInfo.setStRmBoUserMaster(stRmBoUserMaster);
 
 //		stRmBoUserMaster.setStRmBoUserInfo(userInfo);
@@ -425,7 +454,7 @@ public class UserMgmtDaoImpl {
 	public List<String> fetchSubUserName(int roleId, int userId, Session session) {
 		Criteria criteria = session.createCriteria(StRmBoUserMaster.class);
 		criteria.add(Restrictions.eq("stRmBoRoleMaster.roleId", roleId));
-		criteria.add(Restrictions.eq("isRoleHead", "N"));
+		//criteria.add(Restrictions.eq("isRoleHead", "N"));
 		criteria.add(Restrictions.eq("parentUserId", userId));
 		criteria.addOrder(Order.asc("userName"));
 		criteria.setProjection(Projections.property("userName"));

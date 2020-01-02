@@ -3,50 +3,126 @@
 "http://hibernate.sourceforge.net/hibernate-mapping-3.0.dtd">
 
 <hibernate-mapping>
-    <class name="com.stpl.pms.hibernate.mapping.StRmBoUserInfo" table="st_rm_bo_user_info">
-        <id name="Id" type="java.lang.Integer">
-            <column name="id" />
-            <generator class="native" />
-        </id>
-        <property name="userId" type="java.lang.Integer">
-            <column name="user_id" length="11" not-null="true" />
-        </property>
+	<class name="com.stpl.pms.hibernate.mapping.StRmBoUserInfo"
+		table="st_rm_bo_user_info">
+		<id name="Id" type="java.lang.Integer">
+			<column name="id" />
+			<generator class="native" />
+		</id>
+		<property name="userId" type="java.lang.Integer">
+			<column name="user_id" length="11" not-null="true" />
+		</property>
 
-        <property name="firstName" type="java.lang.String">
-            <column name="first_name" length="50" not-null="true" />
-        </property>
-        <property name="lastName" type="java.lang.String">
-            <column name="last_name" length="50" not-null="true" />
-        </property>
-        <property name="gender" type="java.lang.String">
-            <column name="gender" length="1" not-null="true" />
-        </property>
-        <property name="emailId" type="java.lang.String">
-            <column name="email_id" length="100" not-null="true" />
-        </property>
-        <property name="addressLine1" type="java.lang.String">
-            <column name="address_line1" length="100" />
-        </property>
-        <property name="addressLine2" type="java.lang.String">
-            <column name="address_line2" length="100" />
-        </property>
-        <property name="city" type="java.lang.String">
-            <column name="city" length="50"  />
-        </property>
-        <property name="stateCode" type="java.lang.String">
-            <column name="state_code" length="10"  />
-        </property>
-        <property name="countryCode" type="java.lang.String">
-            <column name="country_code" length="5"  />
-        </property>
-        <property name="postalCode" type="java.lang.String">
-            <column name="postal_code" length="15"  />
-        </property>
-        <property name="phoneNum" type="java.lang.String">
-            <column name="phone_num" length="20" />
-        </property>
-        <property name="mobileNum" type="java.lang.String">
-            <column name="mobile_num" length="20" />
-        </property>
-    </class>
+		<property name="firstName" type="java.lang.String">
+			<column name="first_name" length="50" not-null="true" />
+		</property>
+		<property name="lastName" type="java.lang.String">
+			<column name="last_name" length="50" not-null="true" />
+		</property>
+		<property name="gender" type="java.lang.String">
+			<column name="gender" length="1" not-null="true" />
+		</property>
+		<property name="emailId" type="java.lang.String">
+			<column name="email_id" length="100" not-null="true" />
+		</property>
+		<property name="addressLine1" type="java.lang.String">
+			<column name="address_line1" length="100" />
+		</property>
+		<property name="addressLine2" type="java.lang.String">
+			<column name="address_line2" length="100" />
+		</property>
+		<property name="city" type="java.lang.String">
+			<column name="city" length="50" />
+		</property>
+		<property name="stateCode" type="java.lang.String">
+			<column name="state_code" length="10" />
+		</property>
+		<property name="countryCode" type="java.lang.String">
+			<column name="country_code" length="5" />
+		</property>
+		<property name="postalCode" type="java.lang.String">
+			<column name="postal_code" length="15" />
+		</property>
+		<property name="phoneNum" type="java.lang.String">
+			<column name="phone_num" length="20" />
+		</property>
+		<property name="mobileNum" type="java.lang.String">
+			<column name="mobile_num" length="20" />
+		</property>
+		<property name="fatherName" type="java.lang.String">
+			<column name="father_name" length="20" />
+		</property>
+		<property name="dob" type="java.lang.String">
+			<column name="dob" length="20" />
+		</property>
+		<property name="panNumber" type="java.lang.String">
+			<column name="panNumber" length="20" />
+		</property>
+		<property name="aadharNumber" type="java.lang.String">
+			<column name="aadharNumber" length="20" />
+		</property>
+		<property name="voterNumber" type="java.lang.String">
+			<column name="voterNumber" length="20" />
+		</property>
+		<property name="passportNumber" type="java.lang.String">
+			<column name="passportNumber" length="20" />
+		</property>
+		<property name="bloodGroup" type="java.lang.String">
+			<column name="bloodGroup" length="20" />
+		</property>
+		<property name="branch" type="java.lang.String">
+			<column name="branch" length="20" />
+		</property>
+		<property name="currentAddress" type="java.lang.String">
+			<column name="currentAddress" length="20" />
+		</property>
+		<property name="permanentAddress" type="java.lang.String">
+			<column name="permanentAddress" length="20" />
+		</property>
+		<property name="doj" type="java.lang.String">
+			<column name="doj" length="20" />
+		</property>
+		<property name="dol" type="java.lang.String">
+			<column name="dol" length="20" />
+		</property>
+		<property name="country" type="java.lang.String">
+			<column name="country" length="20" />
+		</property>
+		<property name="state" type="java.lang.String">
+			<column name="state" length="20" />
+		</property>
+		<property name="pincode" type="java.lang.String">
+			<column name="pincode" length="20" />
+		</property>
+		<property name="photo_doc" type="java.lang.String">
+			<column name="photo_doc" length="20" />
+		</property>
+		<property name="oldSalarySlip" type="java.lang.String">
+			<column name="oldSalarySlip" length="20" />
+		</property>
+		<property name="expCertificate" type="java.lang.String">
+			<column name="expCertificate" length="20" />
+		</property>
+		<property name="eduCertificate" type="java.lang.String">
+			<column name="eduCertificate" length="20" />
+		</property>
+		<property name="panDoc" type="java.lang.String">
+			<column name="panDoc" length="20" />
+		</property>
+		<property name="aadharDoc" type="java.lang.String">
+			<column name="aadharDoc" length="20" />
+		</property>
+		<property name="voterDoc" type="java.lang.String">
+			<column name="voterDoc" length="20" />
+		</property>
+		<property name="drivingDoc" type="java.lang.String">
+			<column name="drivingDoc" length="20" />
+		</property>
+		<property name="passbookDoc" type="java.lang.String">
+			<column name="passbookDoc" length="20" />
+		</property>
+		<property name="addressDoc" type="java.lang.String">
+			<column name="addressDoc" length="20" />
+		</property>
+	</class>
 </hibernate-mapping>

@@ -1,16 +1,7 @@
 package com.stpl.pms.controller.comm;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
-
 import com.stpl.pms.javabeans.UserDetailsBean;
-import com.stpl.pms.security.ZipFileProtection;
 
-import rng.RNGUtilities;
 
 public class  CommMgmtSmsController extends Thread {
 
@@ -41,43 +32,7 @@ public class  CommMgmtSmsController extends Thread {
 		
 		
 	}
-	private void smsSending() {
-		// TODO Auto-generated method stub
-		System.out.println(":::::::::::::::SMS SENDING:::::::::::::::::::");
-		try{
-			
-			URL url = new URL("http://124.158.14.49/CMCTelecom/api/sms/send?");
-			HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-			conn.setDoOutput(true);
-			conn.setReadTimeout(3000);
-			conn.setConnectTimeout(5000);
-			conn.setRequestMethod("POST");
-			conn.setRequestProperty("charset", "utf-8");
-			OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream());
-			int msgId =RNGUtilities.generateRandomNumber(100,9999999);
-			String urlStr = "phoneNumber="+userDetailsBean.getPhoneNbr()+"&message="+smsContent+"&brandName=TECHPRO.VN&messageId="+msgId+"&user="+userName+"&pass="+password+"";
-			wr.write(urlStr);
-			
-			wr.flush();
-			InputStream iStream = conn.getInputStream();
-			BufferedReader reader = new BufferedReader(new InputStreamReader(iStream));
-			StringBuilder sb = new StringBuilder();
-			String line = null;
-			while ((line = reader.readLine()) != null) {
-				sb.append(line);
-			}
-			String deliveryMsg = sb.toString();
-			System.out.println("SMS TYPE:::::::::::::"+smsType);
-			System.out.println(":::::MSG URL::::::    "+urlStr);
-			System.out.println(":::::MSG SENT SUCCESSFULLY ->>>"+deliveryMsg);
-			
-		}catch (Exception e) {
-			// TODO: handle exception
-			
-			e.printStackTrace();
-			
-		}
-	}
+	private void smsSending() {}
 	public UserDetailsBean getUserDetailsBean() {
 		return userDetailsBean;
 	}
