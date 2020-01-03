@@ -1204,19 +1204,50 @@ public class GameLobbyController {
 		return null;
 	}
 
-	public void insertGroup(String groupName, String group_under, String sub_ledger, String deb_cred_bln_rep, String calc,
-			String pur_invoice) {
+	public boolean insertGroup(String groupName, String group_under, String sub_ledger, String deb_cred_bln_rep,
+			String calc, String pur_invoice) {
 		// TODO Auto-generated method stub
-				Session session = null;
-				Transaction txn = null;
+		Session session = null;
+		Transaction txn = null;
 		try {
-				session = HibernateSessionFactory.getSession();
-				txn = session.beginTransaction();
-				
-				String queryString = "INSERT INTO st_rm_acc_group_master";
+			session = HibernateSessionFactory.getSession();
+			txn = session.beginTransaction();
+			int value = 1;
+			String queryString = "INSERT INTO st_rm_acc_group_master(`group_name`,`group_under_id`,`sub_ledger`,`deb_cred_bal_rep`,`calculation`,`purchase_invoice`) values('"
+					+ groupName + "',"+value+",'" + sub_ledger + "','" + deb_cred_bln_rep + "','" + calc
+					+ "','" + pur_invoice + "')";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			txn.commit();
+			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
+			txn.rollback();
 		}
+		return false;
+	}
+
+	@SuppressWarnings("null")
+	public List<String> getCustomGroupNameList() {
+		// TODO Auto-generated method stub
+		List<String> lst = null;
+		try {
+			lst = new ArrayList<String>();
+			int value = 0;
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT * FROM st_rm_acc_group_master WHERE group_under_id >" + value;
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					lst.add(obj[1].toString());
+				}
+				return lst;
+			}
+		} catch (Exception r) {
+			r.printStackTrace();
+		}
+		return lst;
 	}
 
 }
