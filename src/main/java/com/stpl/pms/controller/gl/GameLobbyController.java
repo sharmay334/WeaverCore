@@ -31,8 +31,10 @@ import com.stpl.pms.hibernate.mapping.StRmBoAllowedIp;
 import com.stpl.pms.hibernate.mapping.StRmBoUserMaster;
 import com.stpl.pms.hibernate.mapping.StRmGameUserMapping;
 import com.stpl.pms.hibernate.mapping.StRmServiceVendorProperties;
+import com.stpl.pms.javabeans.AccountGroupMaster;
 import com.stpl.pms.javabeans.BoVendorGameBean;
 import com.stpl.pms.javabeans.GameLobbyMasterBean;
+import com.stpl.pms.javabeans.LedgerBean;
 import com.stpl.pms.struts.common.GetGameListHelper;
 import com.stpl.pms.utility.AES;
 
@@ -1212,10 +1214,10 @@ public class GameLobbyController {
 		try {
 			session = HibernateSessionFactory.getSession();
 			txn = session.beginTransaction();
-			int value = 1;
+			int value = getGroupUnderIdByName(group_under);
 			String queryString = "INSERT INTO st_rm_acc_group_master(`group_name`,`group_under_id`,`sub_ledger`,`deb_cred_bal_rep`,`calculation`,`purchase_invoice`) values('"
-					+ groupName + "',"+value+",'" + sub_ledger + "','" + deb_cred_bln_rep + "','" + calc
-					+ "','" + pur_invoice + "')";
+					+ groupName + "'," + value + ",'" + sub_ledger + "','" + deb_cred_bln_rep + "','" + calc + "','"
+					+ pur_invoice + "')";
 			SQLQuery query = session.createSQLQuery(queryString);
 			query.executeUpdate();
 			txn.commit();
@@ -1227,15 +1229,37 @@ public class GameLobbyController {
 		return false;
 	}
 
+	private int getGroupUnderIdByName(String group_under) {
+		// TODO Auto-generated method stub
+		try {
+			if (group_under.equalsIgnoreCase("primary")) {
+				return 0;
+			} else {
+				Session session = HibernateSessionFactory.getSession();
+				String queryString = "SELECT group_id,group_name from st_rm_acc_group_master WHERE group_name='"
+						+ group_under + "'";
+				SQLQuery query = session.createSQLQuery(queryString);
+				List<Object[]> result = query.list();
+				if (result != null || !result.isEmpty()) {
+					for (Object[] obj : result) {
+						return (int) obj[0];
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
 	@SuppressWarnings("null")
 	public List<String> getCustomGroupNameList() {
 		// TODO Auto-generated method stub
 		List<String> lst = null;
 		try {
 			lst = new ArrayList<String>();
-			int value = 0;
 			Session session = HibernateSessionFactory.getSession();
-			String queryString = "SELECT * FROM st_rm_acc_group_master WHERE group_under_id >" + value;
+			String queryString = "SELECT * FROM st_rm_acc_group_master";
 			SQLQuery query = session.createSQLQuery(queryString);
 			List<Object[]> result = query.list();
 			if (result != null || !result.isEmpty()) {
@@ -1248,6 +1272,192 @@ public class GameLobbyController {
 			r.printStackTrace();
 		}
 		return lst;
+	}
+
+	public List<AccountGroupMaster> getAccountGroupMaster(String groupName) {
+		// TODO Auto-generated method stub
+		try {
+			AccountGroupMaster accountGroupMaster = new AccountGroupMaster();
+			List<AccountGroupMaster> accountGroupMastersList = new ArrayList<AccountGroupMaster>();
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT group_id,CAST(group_name AS CHAR) as gn,group_under_id,CAST(sub_ledger AS CHAR) as sl,CAST(deb_cred_bal_rep AS CHAR) as dcbr,CAST(calculation AS CHAR) as calc,CAST(purchase_invoice AS CHAR) as pi FROM st_rm_acc_group_master WHERE group_name='"
+					+ groupName + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					accountGroupMaster.setGroupId((int) obj[0]);
+					accountGroupMaster.setGroupName(obj[1].toString());
+					accountGroupMaster.setGroupUnderName(getGroupUnderNameById((int) obj[2]));
+					accountGroupMaster.setSubLedger(obj[3].toString());
+					accountGroupMaster.setBlncForRep(obj[4].toString());
+					accountGroupMaster.setForCalc(obj[5].toString());
+					accountGroupMaster.setPurInvoice(obj[6].toString());
+					accountGroupMastersList.add(accountGroupMaster);
+				}
+				return accountGroupMastersList;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private String getGroupUnderNameById(int i) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT * from st_rm_acc_group_master where group_id=" + i;
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			for (Object[] obj : result)
+				return obj[1].toString();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "Primary";
+	}
+
+	public boolean deleteGroupByName(String groupName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "DELETE FROM st_rm_acc_group_master WHERE group_name='" + groupName + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception r) {
+			r.printStackTrace();
+		}
+		return false;
+	}
+
+	public AccountGroupMaster getEditGroupDisplay(int groupId) {
+		// TODO Auto-generated method stub
+		try {
+			AccountGroupMaster accountGroupMaster = new AccountGroupMaster();
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT group_id,CAST(group_name AS CHAR) as gn,group_under_id,CAST(sub_ledger AS CHAR) as sl,CAST(deb_cred_bal_rep AS CHAR) as dcbr,CAST(calculation AS CHAR) as calc,CAST(purchase_invoice AS CHAR) as pi FROM st_rm_acc_group_master WHERE group_id="
+					+ groupId + "";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					accountGroupMaster.setGroupId((int) obj[0]);
+					accountGroupMaster.setGroupName(obj[1].toString());
+					accountGroupMaster.setGroupUnderName(getGroupUnderNameById((int) obj[2]));
+					accountGroupMaster.setSubLedger(obj[3].toString());
+					accountGroupMaster.setBlncForRep(obj[4].toString());
+					accountGroupMaster.setForCalc(obj[5].toString());
+					accountGroupMaster.setPurInvoice(obj[6].toString());
+
+				}
+				return accountGroupMaster;
+			}
+		} catch (Exception r) {
+			r.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean editGroupDetails(AccountGroupMaster groupMaster) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "UPDATE st_rm_acc_group_master SET sub_ledger='"
+					+ groupMaster.getSubLedger().toUpperCase() + "',deb_cred_bal_rep='"
+					+ groupMaster.getBlncForRep().toUpperCase() + "',calculation='"
+					+ groupMaster.getForCalc().toUpperCase() + "',purchase_invoice='"
+					+ groupMaster.getPurInvoice().toUpperCase() + "' WHERE group_id=" + groupMaster.getGroupId();
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean createLedger(String ledgerName, String groupUnder, String name, String address, String country,
+			String state, String pincode) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "INSERT INTO st_rm_acc_ledger_master(`ledger_name`,`ledger_under_group_name`,`name`,`address`,`country`,`state`,`pincode`) values('"
+					+ ledgerName + "','" + groupUnder + "','" + name + "','" + address + "','" + country + "','" + state
+					+ "','" + pincode + "')";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public List<String> getLedgerNamesList() {
+		// TODO Auto-generated method stub
+		List<String> list = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			list = new ArrayList<String>();
+			String queryString = "SELECT * from st_rm_acc_ledger_master order by ledger_id";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					list.add(obj[1].toString());
+				}
+				return list;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return list;
+	}
+
+	public List<LedgerBean> getAccountLedgerMaster(String ledgerName) {
+		// TODO Auto-generated method stub
+		try {
+		LedgerBean accountLedgerMaster = new LedgerBean();
+		List<LedgerBean> accountGroupMastersList = new ArrayList<LedgerBean>();
+		Session session = HibernateSessionFactory.getSession();
+		String queryString = "SELECT * FROM st_rm_acc_ledger_master WHERE ledger_name='" + ledgerName + "'";
+		SQLQuery query = session.createSQLQuery(queryString);
+		List<Object[]> result = query.list();
+		if (result != null || !result.isEmpty()) {
+			for (Object[] obj : result) {
+				accountLedgerMaster.setLedgerId((int) obj[0]);
+				accountLedgerMaster.setLedgerName(obj[1].toString());
+				accountLedgerMaster.setGroupUnder(obj[2].toString());
+				accountLedgerMaster.setAddress(obj[4].toString());
+				accountLedgerMaster.setName(obj[3].toString());
+				accountLedgerMaster.setCountry(obj[5].toString());
+				accountLedgerMaster.setState(obj[6].toString());
+				accountLedgerMaster.setPincode(obj[7].toString());
+				accountGroupMastersList.add(accountLedgerMaster);
+			}
+			return accountGroupMastersList;
+		}
+	}catch(Exception e)
+	{
+		e.printStackTrace();
+	}
+	return null;
+}
+
+	public boolean deleteLedgerByName(String ledgerName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "DELETE FROM st_rm_acc_ledger_master WHERE ledger_name='" + ledgerName + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception r) {
+			r.printStackTrace();
+		}
+		return false;
 	}
 
 }
