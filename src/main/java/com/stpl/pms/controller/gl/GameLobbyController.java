@@ -34,6 +34,7 @@ import com.stpl.pms.hibernate.mapping.StRmServiceVendorProperties;
 import com.stpl.pms.javabeans.AccountGroupMaster;
 import com.stpl.pms.javabeans.BoVendorGameBean;
 import com.stpl.pms.javabeans.GameLobbyMasterBean;
+import com.stpl.pms.javabeans.LedgerBankAccount;
 import com.stpl.pms.javabeans.LedgerBean;
 import com.stpl.pms.struts.common.GetGameListHelper;
 import com.stpl.pms.utility.AES;
@@ -1379,18 +1380,29 @@ public class GameLobbyController {
 	}
 
 	public boolean createLedger(String ledgerName, String groupUnder, String name, String address, String country,
-			String state, String pincode) {
+			String state, String pincode,LedgerBankAccount ledgerBankAccount) {
 		// TODO Auto-generated method stub
+		Transaction txn = null;
+		Session session = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
+			session = HibernateSessionFactory.getSession();
+			txn = session.beginTransaction();
 			String queryString = "INSERT INTO st_rm_acc_ledger_master(`ledger_name`,`ledger_under_group_name`,`name`,`address`,`country`,`state`,`pincode`) values('"
 					+ ledgerName + "','" + groupUnder + "','" + name + "','" + address + "','" + country + "','" + state
 					+ "','" + pincode + "')";
 			SQLQuery query = session.createSQLQuery(queryString);
 			query.executeUpdate();
+			if (groupUnder.equalsIgnoreCase("Bank Account")) {
+					String bankAccQuery = "INSERT INTO st_rm_acc_ledger_bank_acc_master(`activateInterestCalculation`,`accHolderName`,`bankName`,`accNumber`,`ifsc`,`branch`,`gstNumber`,`chequePrinting`,`chequeBook`) values('"+ledgerBankAccount.getActivateInterestCalculation()+"','"+ledgerBankAccount.getAccHolderName()+"','"+ledgerBankAccount.getBankName()+"','"+ledgerBankAccount.getAccNumber()+"','"+ledgerBankAccount.getIfsc()+"','"+ledgerBankAccount.getBranch()+"','"+ledgerBankAccount.getGstNumber()+"','"+ledgerBankAccount.getChequePrinting()+"','"+ledgerBankAccount.getChequeBook()+"')";
+					SQLQuery bankAccQueryquery = session.createSQLQuery(bankAccQuery);
+					bankAccQueryquery.executeUpdate();
+			}
+			txn.commit();
 			return true;
 		} catch (Exception e) {
+			txn.rollback();
 			e.printStackTrace();
+			
 		}
 		return false;
 	}
@@ -1419,32 +1431,31 @@ public class GameLobbyController {
 	public List<LedgerBean> getAccountLedgerMaster(String ledgerName) {
 		// TODO Auto-generated method stub
 		try {
-		LedgerBean accountLedgerMaster = new LedgerBean();
-		List<LedgerBean> accountGroupMastersList = new ArrayList<LedgerBean>();
-		Session session = HibernateSessionFactory.getSession();
-		String queryString = "SELECT * FROM st_rm_acc_ledger_master WHERE ledger_name='" + ledgerName + "'";
-		SQLQuery query = session.createSQLQuery(queryString);
-		List<Object[]> result = query.list();
-		if (result != null || !result.isEmpty()) {
-			for (Object[] obj : result) {
-				accountLedgerMaster.setLedgerId((int) obj[0]);
-				accountLedgerMaster.setLedgerName(obj[1].toString());
-				accountLedgerMaster.setGroupUnder(obj[2].toString());
-				accountLedgerMaster.setAddress(obj[4].toString());
-				accountLedgerMaster.setName(obj[3].toString());
-				accountLedgerMaster.setCountry(obj[5].toString());
-				accountLedgerMaster.setState(obj[6].toString());
-				accountLedgerMaster.setPincode(obj[7].toString());
-				accountGroupMastersList.add(accountLedgerMaster);
+			LedgerBean accountLedgerMaster = new LedgerBean();
+			List<LedgerBean> accountGroupMastersList = new ArrayList<LedgerBean>();
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT * FROM st_rm_acc_ledger_master WHERE ledger_name='" + ledgerName + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					accountLedgerMaster.setLedgerId((int) obj[0]);
+					accountLedgerMaster.setLedgerName(obj[1].toString());
+					accountLedgerMaster.setGroupUnder(obj[2].toString());
+					accountLedgerMaster.setAddress(obj[4].toString());
+					accountLedgerMaster.setName(obj[3].toString());
+					accountLedgerMaster.setCountry(obj[5].toString());
+					accountLedgerMaster.setState(obj[6].toString());
+					accountLedgerMaster.setPincode(obj[7].toString());
+					accountGroupMastersList.add(accountLedgerMaster);
+				}
+				return accountGroupMastersList;
 			}
-			return accountGroupMastersList;
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-	}catch(Exception e)
-	{
-		e.printStackTrace();
+		return null;
 	}
-	return null;
-}
 
 	public boolean deleteLedgerByName(String ledgerName) {
 		// TODO Auto-generated method stub
