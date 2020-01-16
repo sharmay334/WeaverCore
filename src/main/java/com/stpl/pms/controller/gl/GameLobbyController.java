@@ -19,6 +19,7 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.criterion.Restrictions;
 
+import com.mysql.fabric.xmlrpc.base.Array;
 import com.stpl.pms.constants.ServerStatusBean;
 import com.stpl.pms.daoImpl.commonMethods.CommonMethodDaoImpl;
 import com.stpl.pms.daoImpl.gl.GameLobbyDaoImpl;
@@ -36,6 +37,9 @@ import com.stpl.pms.javabeans.BoVendorGameBean;
 import com.stpl.pms.javabeans.GameLobbyMasterBean;
 import com.stpl.pms.javabeans.LedgerBankAccount;
 import com.stpl.pms.javabeans.LedgerBean;
+import com.stpl.pms.javabeans.StockCatBean;
+import com.stpl.pms.javabeans.StockGroupBean;
+import com.stpl.pms.javabeans.UnitBean;
 import com.stpl.pms.struts.common.GetGameListHelper;
 import com.stpl.pms.utility.AES;
 
@@ -1380,7 +1384,7 @@ public class GameLobbyController {
 	}
 
 	public boolean createLedger(String ledgerName, String groupUnder, String name, String address, String country,
-			String state, String pincode,LedgerBankAccount ledgerBankAccount) {
+			String state, String pincode, LedgerBankAccount ledgerBankAccount) {
 		// TODO Auto-generated method stub
 		Transaction txn = null;
 		Session session = null;
@@ -1393,16 +1397,21 @@ public class GameLobbyController {
 			SQLQuery query = session.createSQLQuery(queryString);
 			query.executeUpdate();
 			if (groupUnder.equalsIgnoreCase("Bank Account")) {
-					String bankAccQuery = "INSERT INTO st_rm_acc_ledger_bank_acc_master(`activateInterestCalculation`,`accHolderName`,`bankName`,`accNumber`,`ifsc`,`branch`,`gstNumber`,`chequePrinting`,`chequeBook`) values('"+ledgerBankAccount.getActivateInterestCalculation()+"','"+ledgerBankAccount.getAccHolderName()+"','"+ledgerBankAccount.getBankName()+"','"+ledgerBankAccount.getAccNumber()+"','"+ledgerBankAccount.getIfsc()+"','"+ledgerBankAccount.getBranch()+"','"+ledgerBankAccount.getGstNumber()+"','"+ledgerBankAccount.getChequePrinting()+"','"+ledgerBankAccount.getChequeBook()+"')";
-					SQLQuery bankAccQueryquery = session.createSQLQuery(bankAccQuery);
-					bankAccQueryquery.executeUpdate();
+				String bankAccQuery = "INSERT INTO st_rm_acc_ledger_bank_acc_master(`activateInterestCalculation`,`accHolderName`,`bankName`,`accNumber`,`ifsc`,`branch`,`gstNumber`,`chequePrinting`,`chequeBook`) values('"
+						+ ledgerBankAccount.getActivateInterestCalculation() + "','"
+						+ ledgerBankAccount.getAccHolderName() + "','" + ledgerBankAccount.getBankName() + "','"
+						+ ledgerBankAccount.getAccNumber() + "','" + ledgerBankAccount.getIfsc() + "','"
+						+ ledgerBankAccount.getBranch() + "','" + ledgerBankAccount.getGstNumber() + "','"
+						+ ledgerBankAccount.getChequePrinting() + "','" + ledgerBankAccount.getChequeBook() + "')";
+				SQLQuery bankAccQueryquery = session.createSQLQuery(bankAccQuery);
+				bankAccQueryquery.executeUpdate();
 			}
 			txn.commit();
 			return true;
 		} catch (Exception e) {
 			txn.rollback();
 			e.printStackTrace();
-			
+
 		}
 		return false;
 	}
@@ -1431,7 +1440,7 @@ public class GameLobbyController {
 	public List<LedgerBean> getAccountLedgerMaster(String ledgerName) {
 		// TODO Auto-generated method stub
 		try {
-			LedgerBean accountLedgerMaster = new LedgerBean();
+			LedgerBean accountLedgerMaster = null;
 			List<LedgerBean> accountGroupMastersList = new ArrayList<LedgerBean>();
 			Session session = HibernateSessionFactory.getSession();
 			String queryString = "SELECT * FROM st_rm_acc_ledger_master WHERE ledger_name='" + ledgerName + "'";
@@ -1439,6 +1448,7 @@ public class GameLobbyController {
 			List<Object[]> result = query.list();
 			if (result != null || !result.isEmpty()) {
 				for (Object[] obj : result) {
+					accountLedgerMaster = new LedgerBean();
 					accountLedgerMaster.setLedgerId((int) obj[0]);
 					accountLedgerMaster.setLedgerName(obj[1].toString());
 					accountLedgerMaster.setGroupUnder(obj[2].toString());
@@ -1469,6 +1479,347 @@ public class GameLobbyController {
 			r.printStackTrace();
 		}
 		return false;
+	}
+
+	public boolean createNewStockGroup(String stockName, String stockUnder, String quantityCheck,
+			String gstDetailCheck) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "INSERT INTO st_rm_stock_group_master(`stock_name`,`stock_under`,`quantity_check`,`gst_detail_check`) values('"
+					+ stockName + "','" + stockUnder + "','" + quantityCheck + "','" + gstDetailCheck + "')";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public List<String> getEmployeeNamesList() {
+		// TODO Auto-generated method stub
+		List<String> list = null;
+		try {
+			list = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(StRmBoUserMaster.class);
+			criteria.add(Restrictions.gt("parentUserId", 0));
+			List<StRmBoUserMaster> result = criteria.list();
+			if (result != null || !result.isEmpty()) {
+				for (StRmBoUserMaster boUserMaster : result) {
+					list.add(boUserMaster.getUserName());
+				}
+				return list;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return list;
+	}
+
+	public List<String> getAllStockGroup() {
+		// TODO Auto-generated method stub
+		List<String> stockList = null;
+		try {
+			stockList = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String StringQuery = "select * from st_rm_stock_group_master";
+			SQLQuery query = session.createSQLQuery(StringQuery);
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty()) {
+				for (Object[] obj : result) {
+					stockList.add(obj[1].toString());
+				}
+				return stockList;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return stockList;
+	}
+
+	public List<StockGroupBean> getStockGrpBeanList() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			StockGroupBean bean = null;
+			List<StockGroupBean> beans = new ArrayList<StockGroupBean>();
+			String queryString = "SELECT * FROM st_rm_stock_group_master";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					bean = new StockGroupBean();
+					bean.setStGpId((int) obj[0]);
+					bean.setStockName(obj[1].toString());
+					bean.setStockUnder(obj[2].toString());
+					bean.setQtyCheck(obj[3].toString());
+					bean.setGstDetCheck(obj[4].toString());
+					beans.add(bean);
+				}
+				return beans;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public StockGroupBean getStockBean(int st_gp_id) {
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT * FROM st_rm_stock_group_master where st_gp_id=" + st_gp_id;
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			StockGroupBean bean = new StockGroupBean();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					bean.setStGpId((int) obj[0]);
+					bean.setStockName(obj[1].toString());
+					bean.setStockUnder(obj[2].toString());
+					bean.setQtyCheck(obj[3].toString());
+					bean.setGstDetCheck(obj[4].toString());
+				}
+				return bean;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	public boolean updateStockGroup(StockGroupBean stockBean) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "UPDATE st_rm_stock_group_master SET stock_name='" + stockBean.getStockName()
+					+ "',quantity_check='" + stockBean.getQtyCheck() + "',gst_detail_check='"
+					+ stockBean.getGstDetCheck() + "' WHERE st_gp_id=" + stockBean.getStGpId();
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean deleteStockByName(String stockName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "DELETE FROM st_rm_stock_group_master WHERE stock_name='" + stockName + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean createNewStockCatagory(String stockName, String stockUnder) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "INSERT INTO st_rm_stock_catagory_master(`stock_name`,`stock_under`) values('"
+					+ stockName + "','" + stockUnder + "')";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception r) {
+			r.printStackTrace();
+		}
+		return false;
+	}
+
+	public List<String> getStockCatagoryNames() {
+		List<String> listResponse = null;
+		try {
+			listResponse = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_stock_catagory_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+
+				for (Object[] obj : result) {
+					listResponse.add(obj[1].toString());
+				}
+				return listResponse;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// TODO Auto-generated method stub
+		return listResponse;
+	}
+
+	public List<StockCatBean> getStockCatagoryDetails(String stockCatagoryName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			List<StockCatBean> beans = new ArrayList<StockCatBean>();
+			StockCatBean bean = new StockCatBean();
+			String sqlString = "SELECT * FROM st_rm_stock_catagory_master where stock_name='" + stockCatagoryName + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					bean.setStCtId((int) obj[0]);
+					bean.setStockName(obj[1].toString());
+					bean.setStock_under(obj[1].toString());
+					beans.add(bean);
+				}
+				return beans;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public StockCatBean getStockCategoryBean(int st_ct_id) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			StockCatBean bean = new StockCatBean();
+			String queryString = "SELECT * FROM st_rm_stock_catagory_master WHERE st_ct_id=" + st_ct_id;
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null) {
+				for (Object[] obj : result) {
+					bean.setStCtId((int) obj[0]);
+					bean.setStockName(obj[1].toString());
+					bean.setStock_under(obj[2].toString());
+				}
+				return bean;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean deleteStockCatagory(String stockCatagoryName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "DELETE FROM st_rm_stock_catagory_master where stock_name='" + stockCatagoryName + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	@SuppressWarnings("null")
+	public List<String> getAllStockCatagory() {
+		// TODO Auto-generated method stub
+		List<String> listResult = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			listResult = new ArrayList<String>();
+			listResult.add("Primary");
+			String queryString = "SELECT * FROM st_rm_stock_catagory_master";
+			SQLQuery query = session.createSQLQuery(queryString);
+			@SuppressWarnings("unchecked")
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					listResult.add(obj[1].toString());
+				}
+				return listResult;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return listResult;
+	}
+
+	public List<String> getAllStockItem() {
+		// TODO Auto-generated method stub
+		List<String> resultList = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			resultList = new ArrayList();
+			String sqlString = "SELECT * from ";
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean createNewUnit(String unitType, String unitSymbol, String formalName, String uQC,
+			String decimalPlace) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int decplc = Integer.valueOf(decimalPlace);
+			String queryString = "INSERT INTO st_rm_unit_master(`unit_type`,`unit_name`,`Symbol`,`formal_name`,`unit_quantity_code`,`no_of_dec_places`) values('"
+					+ unitType + "','" + unitSymbol + "','" + formalName + "','" + uQC + "'," + decplc + ")";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public List<String> getUnitMeasureList() {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		try {
+			response = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT * FROM st_rm_unit_master";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					response.add(obj[3].toString());
+				}
+				return response;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return response;
+	}
+
+	public List<UnitBean> getUnitMeasureBeanByName(String unitSymbol) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			UnitBean unitBean = null;
+			List<UnitBean> list = new ArrayList();
+			String queryString = "SELECT * FROM st_rm_unit_master WHERE Symbol='" + unitSymbol + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					unitBean = new UnitBean();
+					unitBean.setUnitId((int) obj[0]);
+					unitBean.setUnitType(obj[1].toString());
+					unitBean.setFormalName(obj[4].toString());
+					unitBean.setUQC(obj[5].toString());
+					unitBean.setDecimalPlace((int) obj[6]);
+					unitBean.setUnitSymbol(obj[3].toString());
+					list.add(unitBean);
+				}
+				return list;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 }
