@@ -1,6 +1,5 @@
 package com.stpl.pms.controller.gl;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.criterion.Restrictions;
 
-import com.mysql.fabric.xmlrpc.base.Array;
 import com.stpl.pms.constants.ServerStatusBean;
 import com.stpl.pms.daoImpl.commonMethods.CommonMethodDaoImpl;
 import com.stpl.pms.daoImpl.gl.GameLobbyDaoImpl;
@@ -41,7 +39,6 @@ import com.stpl.pms.javabeans.StockCatBean;
 import com.stpl.pms.javabeans.StockGroupBean;
 import com.stpl.pms.javabeans.UnitBean;
 import com.stpl.pms.struts.common.GetGameListHelper;
-import com.stpl.pms.utility.AES;
 
 public class GameLobbyController {
 
@@ -1749,21 +1746,36 @@ public class GameLobbyController {
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			resultList = new ArrayList();
-			String sqlString = "SELECT * from ";
+			resultList.add("Not Applicable");
+			String sqlString = "SELECT * from st_rm_unit_master where unit_type='Simple'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					resultList.add(obj[3].toString());
+				}
+				return resultList;
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return null;
+		return resultList;
 	}
 
-	public boolean createNewUnit(String unitType, String unitSymbol, String formalName, String uQC,
-			String decimalPlace) {
+	public boolean createNewUnit(String unitType, String unitSymbol, String formalName, String uQC, String decimalPlace,
+			String firstCompoundUnit, String conversionOf, String secondCompoundUnit) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			int decplc = Integer.valueOf(decimalPlace);
-			String queryString = "INSERT INTO st_rm_unit_master(`unit_type`,`unit_name`,`Symbol`,`formal_name`,`unit_quantity_code`,`no_of_dec_places`) values('"
-					+ unitType + "','" + unitSymbol + "','" + formalName + "','" + uQC + "'," + decplc + ")";
+			String queryString = "";
+			if (unitType.equalsIgnoreCase("Simple"))
+				queryString = "INSERT INTO st_rm_unit_master(`unit_type`,`Symbol`,`formal_name`,`unit_quantity_code`,`no_of_dec_places`) values('"
+						+ unitType + "','" + unitSymbol + "','" + formalName + "','" + uQC + "'," + decplc + ")";
+			else
+				queryString = "INSERT INTO st_rm_unit_master(`unit_type`,`first_compound_unit`,`conversionOf`,`second_compound_unit`) values('" + unitType + "','"
+						+ firstCompoundUnit + "','" + conversionOf + "','" + secondCompoundUnit + "')";
+
 			SQLQuery query = session.createSQLQuery(queryString);
 			query.executeUpdate();
 			return true;
@@ -1779,7 +1791,7 @@ public class GameLobbyController {
 		try {
 			response = new ArrayList<String>();
 			Session session = HibernateSessionFactory.getSession();
-			String queryString = "SELECT * FROM st_rm_unit_master";
+			String queryString = "SELECT * FROM st_rm_unit_master where unit_type='Simple'";
 			SQLQuery query = session.createSQLQuery(queryString);
 			List<Object[]> result = query.list();
 			if (result != null || !result.isEmpty()) {
@@ -1820,6 +1832,20 @@ public class GameLobbyController {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	public boolean deleteUnitMeasure(String unitSymbol) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "DELETE FROM st_rm_unit_master WHERE Symbol='" + unitSymbol + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception r) {
+			r.printStackTrace();
+		}
+		return false;
 	}
 
 }
