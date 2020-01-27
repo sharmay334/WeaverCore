@@ -1773,8 +1773,9 @@ public class GameLobbyController {
 				queryString = "INSERT INTO st_rm_unit_master(`unit_type`,`Symbol`,`formal_name`,`unit_quantity_code`,`no_of_dec_places`) values('"
 						+ unitType + "','" + unitSymbol + "','" + formalName + "','" + uQC + "'," + decplc + ")";
 			else
-				queryString = "INSERT INTO st_rm_unit_master(`unit_type`,`first_compound_unit`,`conversionOf`,`second_compound_unit`) values('" + unitType + "','"
-						+ firstCompoundUnit + "','" + conversionOf + "','" + secondCompoundUnit + "')";
+				queryString = "INSERT INTO st_rm_unit_master(`unit_type`,`first_compound_unit`,`conversionOf`,`second_compound_unit`) values('"
+						+ unitType + "','" + firstCompoundUnit + "','" + conversionOf + "','" + secondCompoundUnit
+						+ "')";
 
 			SQLQuery query = session.createSQLQuery(queryString);
 			query.executeUpdate();
@@ -1844,6 +1845,25 @@ public class GameLobbyController {
 			return true;
 		} catch (Exception r) {
 			r.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean itemCreationFirstStep(String stItm_stockItemName, String stItm_stockUnderItem,
+			String stItm_stockItemCat, String stItm_stockItemUnit, String stItm_isGst, String stItm_alterGst,
+			String stItm_supplyType, String stItm_dutyRate) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlQuery = "INSERT INTO st_rm_stock_item_master(`item_name`,`under_grp`,`under_cat`,`is_unit`,`is_gst_applicable`,`alter_gst`,`type_of_supply`,`rate_of_duty`) values('"
+					+ stItm_stockItemName + "','" + stItm_stockUnderItem + "','" + stItm_stockItemCat + "','"
+					+ stItm_stockItemUnit + "','" + stItm_isGst + "','" + stItm_alterGst + "','" + stItm_supplyType
+					+ "','" + stItm_dutyRate + "')";
+			SQLQuery query = session.createSQLQuery(sqlQuery);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 		return false;
 	}
