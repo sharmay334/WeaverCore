@@ -3,6 +3,7 @@ package com.stpl.pms.controller.gl;
 import java.io.FileInputStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +38,7 @@ import com.stpl.pms.javabeans.LedgerBankAccount;
 import com.stpl.pms.javabeans.LedgerBean;
 import com.stpl.pms.javabeans.StockCatBean;
 import com.stpl.pms.javabeans.StockGroupBean;
+import com.stpl.pms.javabeans.StockItemBean;
 import com.stpl.pms.javabeans.UnitBean;
 import com.stpl.pms.struts.common.GetGameListHelper;
 
@@ -1851,21 +1853,196 @@ public class GameLobbyController {
 
 	public boolean itemCreationFirstStep(String stItm_stockItemName, String stItm_stockUnderItem,
 			String stItm_stockItemCat, String stItm_stockItemUnit, String stItm_isGst, String stItm_alterGst,
-			String stItm_supplyType, String stItm_dutyRate) {
+			String stItm_supplyType, String stItm_dutyRate, String stockItemAlterUnit, String funit, String sunit,
+			String isbatches, String dom, String expDate, String standRate, String costTrack) {
+		// TODO Auto-generated method stub
+		String sqlQuery = "";
+		Session session = null;
+		Transaction transaction = null;
+		try {
+			session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			sqlQuery = "INSERT INTO st_rm_stock_item_unit_master(`is_alternate`,`conversion_from`,`from_unit`,`conversion_to`,`to_unit`,`is_batches`,`date_of_manu`,`use_expiry`,`is_standard`,`cost_track`) values('"
+					+ stockItemAlterUnit + "','" + funit + "','" + stockItemAlterUnit + "','" + sunit + "','"
+					+ stItm_stockItemUnit + "','" + isbatches + "','" + dom + "','" + expDate + "','" + standRate
+					+ "','" + costTrack + "')";
+			SQLQuery unitQuery = session.createSQLQuery(sqlQuery);
+			unitQuery.executeUpdate();
+			int unitId = getItemUnitIdFromMaster();
+			sqlQuery = "INSERT INTO st_rm_stock_item_master(`item_name`,`under_grp`,`under_cat`,`is_unit`,`item_unit_id`,`is_gst_applicable`,`alter_gst`,`type_of_supply`,`rate_of_duty`) values('"
+					+ stItm_stockItemName + "','" + stItm_stockUnderItem + "','" + stItm_stockItemCat + "','"
+					+ stItm_stockItemUnit + "'," + unitId + ",'" + stItm_isGst + "','" + stItm_alterGst + "','"
+					+ stItm_supplyType + "','" + stItm_dutyRate + "')";
+			SQLQuery masterQuery = session.createSQLQuery(sqlQuery);
+			masterQuery.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	private int getItemUnitIdFromMaster() {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			String sqlQuery = "INSERT INTO st_rm_stock_item_master(`item_name`,`under_grp`,`under_cat`,`is_unit`,`is_gst_applicable`,`alter_gst`,`type_of_supply`,`rate_of_duty`) values('"
-					+ stItm_stockItemName + "','" + stItm_stockUnderItem + "','" + stItm_stockItemCat + "','"
-					+ stItm_stockItemUnit + "','" + stItm_isGst + "','" + stItm_alterGst + "','" + stItm_supplyType
-					+ "','" + stItm_dutyRate + "')";
-			SQLQuery query = session.createSQLQuery(sqlQuery);
+			SQLQuery query = session.createSQLQuery("SELECT MAX(item_unit_id) from st_rm_stock_item_unit_master");
+			List<Integer> result = query.list();
+			int itemId = 0;
+			if (result != null || !result.isEmpty()) {
+				for (Integer obj : result) {
+					itemId = obj;
+				}
+				return itemId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return 0;
+	}
+
+	public List<String> getAllStockItemsList() {
+		// TODO Auto-generated method stub
+		List<String> listResult = null;
+		try {
+			listResult = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String query = "SELECT DISTINCT item_name from st_rm_stock_item_master";
+			SQLQuery sqlQuery = session.createSQLQuery(query);
+			List<String> result = sqlQuery.list();
+			if (result != null || !result.isEmpty()) {
+				for (String s : result)
+					listResult.add(s);
+				return listResult;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return listResult;
+	}
+
+	public List<StockItemBean> getStockItemBeanByName(String stockItemSelected) {
+		// TODO Auto-generated method stub
+		try {
+			StockItemBean bean = new StockItemBean();
+			List<StockItemBean> response = new ArrayList<StockItemBean>();
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT * FROM `st_rm_stock_item_master` AS a   LEFT JOIN  `st_rm_stock_item_unit_master` AS b ON a.item_unit_id = b.item_unit_id WHERE a.item_name='"
+							+ stockItemSelected + "'");
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+
+					bean.setItemId((int) obj[0]);
+					bean.setItemName(obj[1].toString());
+					bean.setUnderGroup(obj[2].toString());
+					bean.setUnderCatagory(obj[3].toString());
+					bean.setIsUnit(obj[4].toString());
+					bean.setGstApplicable(obj[6].toString());
+					bean.setAlterGST(obj[7].toString());
+					bean.setSupplyType(obj[9].toString());
+					bean.setRateDuty(obj[10].toString());
+					bean.setIsAlternate(obj[12].toString());
+					if (!obj[12].toString().equalsIgnoreCase("not applicable")) {
+						bean.setConversionFrom(obj[13].toString() + " " + obj[14].toString());
+						bean.setConversionTo(obj[15].toString() + " " + obj[15].toString());
+					}
+					bean.setIsBatches(obj[16].toString());
+					if (bean.getIsBatches().equalsIgnoreCase("YES")) {
+						bean.setDom(obj[17].toString());
+						bean.setExpiry(obj[18].toString());
+					}
+					bean.setIsStandard(obj[19] != null ? obj[19].toString() : "");
+					bean.setCostTrack(obj[21] != null ? obj[21].toString() : "");
+					response.add(bean);
+				}
+				return response;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean deleteStockItem(String stockItemSelected) {
+		// TODO Auto-generated method stub
+		Session session = null;
+		Transaction transaction = null;
+		try {
+			session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			int id = getUnitItemId(stockItemSelected);
+			String query = "delete from st_rm_stock_item_master where item_name='" + stockItemSelected + "'";
+			SQLQuery query2 = session.createSQLQuery(query);
+			query2.executeUpdate();
+			if (id > 0) {
+				String nextQuery = "delete from st_rm_stock_item_unit_master where item_unit_id=" + id + "";
+				SQLQuery query3 = session.createSQLQuery(nextQuery);
+				query3.executeUpdate();
+			}
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+
+		}
+		return false;
+	}
+
+	private int getUnitItemId(String stockItemSelected) {
+		// TODO Auto-generated method stub
+		Session session = HibernateSessionFactory.getSession();
+		String sqlString = "SELECT item_unit_id from st_rm_stock_item_master where item_name ='" + stockItemSelected
+				+ "'";
+		SQLQuery query = session.createSQLQuery(sqlString);
+		List<Integer> result = query.list();
+		if (result != null || !result.isEmpty()) {
+			return result.get(0);
+		}
+		return 0;
+	}
+
+	public List<String> getAllGoDownList() {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT * FROM st_rm_Godown_master";
+			SQLQuery query = session.createSQLQuery(queryString);
+			response = new ArrayList<String>();
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result)
+					response.add(obj[1].toString());
+				return response;
+			}
+		} catch (Exception r) {
+			r.printStackTrace();
+		}
+		return response;
+	}
+
+	public boolean createNewGodown(String godownName, String godownUnder, String allowStorage,
+			String ourStockwithTparty, String thirdPartyStockWithus) {
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "INSERT INTO st_rm_Godown_master(`name`,`under`,`allow_storage`,`our_stock_with_3_party`,`3_party_stock_with_us`) values('"
+					+ godownName + "','" + godownUnder + "','" + allowStorage + "','" + ourStockwithTparty + "','"
+					+ thirdPartyStockWithus + "')";
+			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
 			return true;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		// TODO Auto-generated method stub
 		return false;
 	}
+
 
 }
