@@ -40,6 +40,7 @@ import com.stpl.pms.javabeans.StockCatBean;
 import com.stpl.pms.javabeans.StockGroupBean;
 import com.stpl.pms.javabeans.StockItemBean;
 import com.stpl.pms.javabeans.UnitBean;
+import com.stpl.pms.javabeans.VoucherBean;
 import com.stpl.pms.struts.common.GetGameListHelper;
 
 public class GameLobbyController {
@@ -2044,5 +2045,166 @@ public class GameLobbyController {
 		return false;
 	}
 
+	public List<String> getVoucherTypeList() {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		try {
+			response = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT * FROM st_rm_voucher_list_master";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					response.add(obj[1].toString());
+				}
+				return response;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return response;
+	}
+
+	public boolean createNewVoucher(VoucherBean voucherBean) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int voucherUnderId = getVoucherUnder(voucherBean.getVoucherType());
+			if (voucherUnderId > 0) {
+				String sqlString = "INSERT INTO st_rm_voucher_master(`vc_name`,`under_id`,`vchr_numbering`,`eff_date_of_vchr`,`narration_allowd`) values('"
+						+ voucherBean.getVoucherName() + "'," + voucherUnderId + ",'"
+						+ voucherBean.getVoucherNumbering() + "','" + voucherBean.getEffctvDateOfVchr() + "','"
+						+ voucherBean.getNarrationAllowed() + "')";
+				SQLQuery query = session.createSQLQuery(sqlString);
+				query.executeUpdate();
+				return true;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	private int getVoucherUnder(String voucherType) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select * from st_rm_voucher_list_master WHERE voucher_name='" + voucherType + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result)
+					return (int) obj[0];
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	public List<String> getCustomVoucherList() {
+		List<String> response = null;
+		try {
+			response = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_voucher_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					response.add(obj[1].toString());
+				}
+				return response;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// TODO Auto-generated method stub
+		return response;
+	}
+
+	public List<VoucherBean> getVouchetBeanByName(String voucherName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			VoucherBean bean = new VoucherBean();
+			List<VoucherBean> beans = new ArrayList<VoucherBean>();
+			String sqlString = "SELECT * FROM st_rm_voucher_master WHERE vc_name='" + voucherName + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					bean.setVoucherId((int) obj[0]);
+					bean.setVoucherName(obj[1].toString());
+					bean.setVoucherType(getVoucherTypeById((int) obj[2]));
+					bean.setVoucherNumbering(obj[3].toString());
+					bean.setEffctvDateOfVchr(obj[4].toString());
+					bean.setNarrationAllowed(obj[4].toString());
+					beans.add(bean);
+				}
+
+				return beans;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private String getVoucherTypeById(int id) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_voucher_list_master WHERE vchr_id=" + id + "";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					return obj[1].toString();
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean deleteVoucher(String voucherName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "DELETE FROM st_rm_voucher_master WHERE vc_name='" + voucherName + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public List<String> getaccountListForTxnPayment() {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		try {
+			response = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String sqlQuery = "SELECT * FROM st_rm_acc_group_master WHERE group_under_id IN(2,3,4,7)";
+			SQLQuery query = session.createSQLQuery(sqlQuery);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result) {
+					response.add(obj[1].toString());
+				}
+				return response;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return response;
+	}
 
 }
