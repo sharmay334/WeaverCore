@@ -3,7 +3,7 @@ package com.stpl.pms.javabeans;
 import java.util.List;
 
 public class TxnPaymentBean {
-	private int payId;
+	private int payId;	
 	private String account;
 	private String currBalance;
 	private List<String> particulars;

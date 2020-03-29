@@ -2,8 +2,14 @@ package com.stpl.pms.controller.gl;
 
 import java.io.FileInputStream;
 import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +24,11 @@ import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.criterion.Restrictions;
+import org.joda.time.Days;
+import org.joda.time.LocalDateTime;
+import org.joda.time.Months;
+import org.joda.time.Period;
+import org.joda.time.Years;
 
 import com.stpl.pms.constants.ServerStatusBean;
 import com.stpl.pms.daoImpl.commonMethods.CommonMethodDaoImpl;
@@ -1384,7 +1395,8 @@ public class GameLobbyController {
 	}
 
 	public boolean createLedger(String ledgerName, String groupUnder, String name, String address, String country,
-			String state, String pincode, LedgerBankAccount ledgerBankAccount) {
+			String state, String pincode, LedgerBankAccount ledgerBankAccount, String blcBillByBill,
+			String defCreditPeriod, String creditDayDuringVoucher, String specifyCreditLimit) {
 		// TODO Auto-generated method stub
 		Transaction txn = null;
 		Session session = null;
@@ -1396,15 +1408,28 @@ public class GameLobbyController {
 					+ "','" + pincode + "')";
 			SQLQuery query = session.createSQLQuery(queryString);
 			query.executeUpdate();
-			if (groupUnder.equalsIgnoreCase("Bank Account")) {
-				String bankAccQuery = "INSERT INTO st_rm_acc_ledger_bank_acc_master(`activateInterestCalculation`,`accHolderName`,`bankName`,`accNumber`,`ifsc`,`branch`,`gstNumber`,`chequePrinting`,`chequeBook`) values('"
-						+ ledgerBankAccount.getActivateInterestCalculation() + "','"
-						+ ledgerBankAccount.getAccHolderName() + "','" + ledgerBankAccount.getBankName() + "','"
-						+ ledgerBankAccount.getAccNumber() + "','" + ledgerBankAccount.getIfsc() + "','"
-						+ ledgerBankAccount.getBranch() + "','" + ledgerBankAccount.getGstNumber() + "','"
-						+ ledgerBankAccount.getChequePrinting() + "','" + ledgerBankAccount.getChequeBook() + "')";
-				SQLQuery bankAccQueryquery = session.createSQLQuery(bankAccQuery);
-				bankAccQueryquery.executeUpdate();
+			queryString = "select ledger_id from st_rm_acc_ledger_master WHERE ledger_name='" + ledgerName + "'";
+			SQLQuery query2 = session.createSQLQuery(queryString);
+			List<Integer> result = query2.list();
+			Integer Ledger_id = result.get(0);
+			String bankAccQuery = "INSERT INTO st_rm_acc_ledger_bank_acc_master(`ledgerId`,`activateInterestCalculation`,`accHolderName`,`bankName`,`accNumber`,`ifsc`,`branch`,`gstNumber`,`chequePrinting`,`chequeBook`) values("
+					+ Ledger_id + ",'" + ledgerBankAccount.getActivateInterestCalculation() + "','"
+					+ ledgerBankAccount.getAccHolderName() + "','" + ledgerBankAccount.getBankName() + "','"
+					+ ledgerBankAccount.getAccNumber() + "','" + ledgerBankAccount.getIfsc() + "','"
+					+ ledgerBankAccount.getBranch() + "','" + ledgerBankAccount.getGstNumber() + "','"
+					+ ledgerBankAccount.getChequePrinting() + "','" + ledgerBankAccount.getChequeBook() + "')";
+			SQLQuery bankAccQueryquery = session.createSQLQuery(bankAccQuery);
+			bankAccQueryquery.executeUpdate();
+			if (groupUnder.equals("Sundry creditors") || groupUnder.equals("Sundry debtors")) {
+				if (defCreditPeriod.isEmpty())
+					defCreditPeriod = "-1";
+				if (specifyCreditLimit.isEmpty())
+					specifyCreditLimit = "-1";
+				queryString = "INSERT INTO st_rm_credit_limit(`ledger_id`,`blnc_bill_by_bill`,`credit_period`,`credit_day_vchr_entry`,`credit_limit`) values("
+						+ Ledger_id + ",'" + blcBillByBill + "'," + defCreditPeriod + ",'" + creditDayDuringVoucher
+						+ "'," + specifyCreditLimit + ")";
+				SQLQuery query3 = session.createSQLQuery(queryString);
+				query3.executeUpdate();
 			}
 			txn.commit();
 			return true;
@@ -1855,7 +1880,8 @@ public class GameLobbyController {
 	public boolean itemCreationFirstStep(String stItm_stockItemName, String stItm_stockUnderItem,
 			String stItm_stockItemCat, String stItm_stockItemUnit, String stItm_isGst, String stItm_alterGst,
 			String stItm_supplyType, String stItm_dutyRate, String stockItemAlterUnit, String funit, String sunit,
-			String isbatches, String dom, String expDate, String standRate, String costTrack) {
+			String isbatches, String dom, String expDate, String standRate, String costTrack, String itax, String ctax,
+			String stax, String cess) {
 		// TODO Auto-generated method stub
 		String sqlQuery = "";
 		Session session = null;
@@ -1869,11 +1895,23 @@ public class GameLobbyController {
 					+ "','" + costTrack + "')";
 			SQLQuery unitQuery = session.createSQLQuery(sqlQuery);
 			unitQuery.executeUpdate();
+			int gstId = 0;
+			if (stItm_alterGst.equalsIgnoreCase("Yes")) {
+				int i = Integer.valueOf(itax);
+				int c = Integer.valueOf(ctax);
+				int s = Integer.valueOf(stax);
+				int ces = cess.isEmpty() ? 0 : Integer.valueOf(cess);
+				String gstQuery = "INSERT INTO st_rm_stock_gst_master(`igst`,`cgst`,`sgst`,`cess`) values(" + i + ","
+						+ c + "," + s + "," + ces + ")";
+				SQLQuery querygst = session.createSQLQuery(gstQuery);
+				querygst.executeUpdate();
+				gstId = getItemGSTIdFromMaster();
+			}
 			int unitId = getItemUnitIdFromMaster();
-			sqlQuery = "INSERT INTO st_rm_stock_item_master(`item_name`,`under_grp`,`under_cat`,`is_unit`,`item_unit_id`,`is_gst_applicable`,`alter_gst`,`type_of_supply`,`rate_of_duty`) values('"
+			sqlQuery = "INSERT INTO st_rm_stock_item_master(`item_name`,`under_grp`,`under_cat`,`is_unit`,`item_unit_id`,`is_gst_applicable`,`alter_gst`,`alter_gst_id`,`type_of_supply`,`rate_of_duty`) values('"
 					+ stItm_stockItemName + "','" + stItm_stockUnderItem + "','" + stItm_stockItemCat + "','"
-					+ stItm_stockItemUnit + "'," + unitId + ",'" + stItm_isGst + "','" + stItm_alterGst + "','"
-					+ stItm_supplyType + "','" + stItm_dutyRate + "')";
+					+ stItm_stockItemUnit + "'," + unitId + ",'" + stItm_isGst + "','" + stItm_alterGst + "'," + gstId
+					+ ",'" + stItm_supplyType + "','" + stItm_dutyRate + "')";
 			SQLQuery masterQuery = session.createSQLQuery(sqlQuery);
 			masterQuery.executeUpdate();
 			transaction.commit();
@@ -1883,6 +1921,26 @@ public class GameLobbyController {
 			e.printStackTrace();
 		}
 		return false;
+	}
+
+	private int getItemGSTIdFromMaster() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("SELECT MAX(gst_id) from st_rm_stock_gst_master");
+			List<Integer> result = query.list();
+			int itemId = 0;
+			if (result != null || !result.isEmpty()) {
+				for (Integer obj : result) {
+					itemId = obj;
+				}
+				return itemId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return 0;
 	}
 
 	private int getItemUnitIdFromMaster() {
@@ -2186,13 +2244,25 @@ public class GameLobbyController {
 		return false;
 	}
 
-	public List<String> getaccountListForTxnPayment() {
+	public List<String> getaccountListForTxnPayment(String type) {
 		// TODO Auto-generated method stub
 		List<String> response = null;
 		try {
+			String suffixQuery = "";
+			if (type.equals("accList"))
+				suffixQuery = "WHERE ledger_under_group_name IN('Bank Account','Bank occ a/c','Bank od a/c','Cash in hand')";
+			else if (type.equals("sales acc"))
+				suffixQuery = "WHERE ledger_under_group_name IN('Sales account')";
+			else if (type.equals("purchase acc"))
+				suffixQuery = "WHERE ledger_under_group_name IN('Purchase account')";
+			else if (type.equals("payment"))
+				suffixQuery = "WHERE ledger_under_group_name NOT IN('Bank Account','Bank occ a/c','Bank od a/c')";
+
+			else
+				suffixQuery = "";
 			response = new ArrayList<String>();
 			Session session = HibernateSessionFactory.getSession();
-			String sqlQuery = "SELECT * FROM st_rm_acc_group_master WHERE group_under_id IN(2,3,4,7)";
+			String sqlQuery = "SELECT * FROM st_rm_acc_ledger_master " + suffixQuery;
 			SQLQuery query = session.createSQLQuery(sqlQuery);
 			List<Object[]> result = query.list();
 			if (result != null || !result.isEmpty()) {
@@ -2205,6 +2275,1552 @@ public class GameLobbyController {
 			e.printStackTrace();
 		}
 		return response;
+	}
+
+	public boolean createTransactionPayment(String account, String employeeUnder, String currBalance,
+			String particulars, String amount, String bankName, String txnType, String narration, String currentblnc,
+			String hiddenTypeOfRef, String hiddenBillWiseName, String hiddenAmnt, String hiddenBilId) {
+		// TODO Auto-generated method stubp
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getEmployeeId(employeeUnder);
+			String sqlString = "INSERT INTO st_rm_txn_payment_master(`account`,`empId`,`currentBalance`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`,`finalBalance`) values('"
+					+ account + "'," + empId + ",'" + currBalance + "','" + particulars + "','" + amount + "','"
+					+ txnType + "','" + bankName + "','" + narration + "'," + currBalance + ")";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			String particularArr[] = particulars.split(",");
+			String currentblncArr[] = currentblnc.split(",");
+			String typeOfRefArr[] = hiddenTypeOfRef.split(",");
+			String amountArr[] = amount.split(",");
+			String hiddenBillWiseNameArr[] = hiddenBillWiseName.split(",");
+			String hiddenAmntArr[] = hiddenAmnt.split(",");
+			String hiddenBilIdArr[] = new String[hiddenBillWiseNameArr.length];
+			for (int i = 0; i < hiddenBillWiseNameArr.length; i++) {
+				String TemphiddenBillWiseNameArr[] = hiddenBillWiseNameArr[i].split(" ");
+				if (TemphiddenBillWiseNameArr.length > 0) {
+					if (i > 0)
+						hiddenBilIdArr[i] = TemphiddenBillWiseNameArr[1];
+					else
+						hiddenBilIdArr[i] = TemphiddenBillWiseNameArr[0];
+
+				}
+			}
+			int length = particularArr.length;
+			int lengthBillWise = hiddenBilIdArr.length;
+			for (int i = 0; i < length - 1; i++) {
+				String sqlString1 = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + particularArr[i]
+						+ "'";
+				SQLQuery query1 = session.createSQLQuery(sqlString1);
+				List<Object[]> partyIds = query1.list();
+				int partyLedgerId = 0;
+				for (Object[] obj : partyIds) {
+					partyLedgerId = (int) obj[0];
+				}
+				sqlString1 = "SELECT balance_type FROM st_rm_purchase_party_master_balance WHERE party_id="
+						+ partyLedgerId + "";
+				SQLQuery queryn = session.createSQLQuery(sqlString1);
+				List<String> rs = queryn.list();
+				String blnc_type = rs.get(0);
+				Integer blnc = Integer.valueOf(currentblncArr[i]);
+				String temp_blnc_type = "";
+
+				if (blnc_type.equals("Cr")) {
+					if (blnc < 0) {
+						blnc = blnc * (-1);
+						temp_blnc_type = ",balance_type='Dr'";
+					} else {
+						temp_blnc_type = ",balance_type='Cr'";
+					}
+				} else {
+					temp_blnc_type = ",balance_type='Dr'";
+				}
+
+				sqlString1 = "UPDATE st_rm_purchase_party_master_balance SET balance='" + String.valueOf(blnc) + "' "
+						+ temp_blnc_type + " WHERE party_id=" + partyLedgerId + "";
+				SQLQuery query2 = session.createSQLQuery(sqlString1);
+				query2.executeUpdate();
+				String is_used = "No";
+				LocalDate date = LocalDate.now();
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+				if (!hiddenBilIdArr[0].isEmpty()) {
+
+					for (int j = 0; j < lengthBillWise; j++) {
+						if (typeOfRefArr[i].equals("Advance") || typeOfRefArr[i].equals("On Account")) {
+							sqlString1 = "INSERT INTO st_rm_bill_wise_details(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`,`blnc_type`) values('"
+									+ typeOfRefArr[j] + "','" + partyLedgerId + "','" + hiddenAmntArr[j] + "','"
+									+ is_used + "','" + date.format(formatter) + "','Dr')";
+							SQLQuery query3 = session.createSQLQuery(sqlString1);
+							query3.executeUpdate();
+
+						} else {
+							sqlString1 = "SELECT * FROM st_rm_bill_wise_details WHERE party_id=" + partyLedgerId
+									+ " and bill_id=" + Integer.valueOf(hiddenBilIdArr[j]) + "";
+							SQLQuery query3 = session.createSQLQuery(sqlString1);
+							List<Object[]> rst = query3.list();
+							Integer Amount = 0;
+							if (rst != null) {
+								for (Object[] obj : rst)
+									Amount = Integer.valueOf(obj[3].toString());
+							}
+							Amount = Amount - Integer.valueOf(hiddenAmntArr[i]);
+							if (Amount <= 0) {
+								is_used = "Yes";
+							}
+							sqlString1 = "UPDATE st_rm_bill_wise_details SET balance='" + String.valueOf(Amount)
+									+ "',is_used='" + is_used + "' WHERE bill_id=" + Integer.valueOf(hiddenBilIdArr[j])
+									+ "";
+							SQLQuery query4 = session.createSQLQuery(sqlString1);
+							query4.executeUpdate();
+						}
+					}
+				}
+
+			}
+
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	private int getEmployeeId(String employeeUnder) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(StRmBoUserMaster.class);
+			criteria.add(Restrictions.eq("userName", employeeUnder));
+			List<StRmBoUserMaster> result = criteria.list();
+			if (result != null || !result.isEmpty()) {
+				for (StRmBoUserMaster obj : result) {
+					return obj.getUserId();
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	public int getPaymentNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(paymentId) from st_rm_txn_payment_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public boolean createTransactionContra(String account, String employeeUnder, String currBalance, String particulars,
+			String amount, String bankName, String txnType, String narration, String pcurBalance) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getEmployeeId(employeeUnder);
+			String sqlString = "INSERT INTO st_rm_txn_contra_master(`account`,`empId`,`currentBalance`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`,`finalBalance`) values('"
+					+ account + "'," + empId + ",'" + currBalance + "','" + particulars + "','" + amount + "','"
+					+ txnType + "','" + bankName + "','" + narration + "'," + currBalance + ")";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			String[] particularsArr = particulars.split(",");
+			String[] pcurBalanceArr = pcurBalance.split(",");
+
+			int length = particularsArr.length;
+			for (int i = 0; i < length - 1; i++) {
+				sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + particularsArr[i] + "'";
+				SQLQuery query1 = session.createSQLQuery(sqlString);
+				List<Object[]> partyIds = query1.list();
+				int partyLedgerId = 0;
+				for (Object[] obj : partyIds) {
+					partyLedgerId = (int) obj[0];
+				}
+				sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + pcurBalanceArr[i]
+						+ "' WHERE party_id=" + partyLedgerId + "";
+				SQLQuery query2 = session.createSQLQuery(sqlString);
+				query2.executeUpdate();
+			}
+
+			return true;
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public int getContraNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(contraId) from st_rm_txn_contra_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public int getReceiptNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(receiptId) from st_rm_txn_receipt_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public boolean createTransactionReceipt(String account, String employeeUnder, String currBalance,
+			String particulars, String amount, String bankName, String txnType, String narration, String currentblnc,
+			String hiddenTypeOfRef, String hiddenBillWiseName, String hiddenAmnt, String hiddenBilId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getEmployeeId(employeeUnder);
+			String sqlString = "INSERT INTO st_rm_txn_receipt_master(`account`,`empId`,`currentBalance`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`,`finalBalance`) values('"
+					+ account + "'," + empId + ",'" + currBalance + "','" + particulars + "','" + amount + "','"
+					+ txnType + "','" + bankName + "','" + narration + "'," + currBalance + ")";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			String particularArr[] = particulars.split(",");
+			String currentblncArr[] = currentblnc.split(",");
+			String typeOfRefArr[] = hiddenTypeOfRef.split(",");
+			String amountArr[] = amount.split(",");
+			String hiddenBillWiseNameArr[] = hiddenBillWiseName.split(",");
+			String hiddenAmntArr[] = hiddenAmnt.split(",");
+			String hiddenBilIdArr[] = new String[hiddenBillWiseNameArr.length];
+			for (int i = 0; i < hiddenBillWiseNameArr.length; i++) {
+				String TemphiddenBillWiseNameArr[] = hiddenBillWiseNameArr[i].split(" ");
+				if (TemphiddenBillWiseNameArr.length > 0) {
+					if (i > 0)
+						hiddenBilIdArr[i] = TemphiddenBillWiseNameArr[1];
+					else
+						hiddenBilIdArr[i] = TemphiddenBillWiseNameArr[0];
+
+				}
+			}
+			int length = particularArr.length;
+			int lengthBillWise = hiddenBilIdArr.length;
+			for (int i = 0; i < length - 1; i++) {
+				String sqlString1 = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + particularArr[i]
+						+ "'";
+				SQLQuery query1 = session.createSQLQuery(sqlString1);
+				List<Object[]> partyIds = query1.list();
+				int partyLedgerId = 0;
+				for (Object[] obj : partyIds) {
+					partyLedgerId = (int) obj[0];
+				}
+				sqlString1 = "SELECT balance_type FROM st_rm_purchase_party_master_balance WHERE party_id="
+						+ partyLedgerId + "";
+				SQLQuery queryn = session.createSQLQuery(sqlString1);
+				List<String> rs = queryn.list();
+				String blnc_type = rs.get(0);
+				Integer blnc = Integer.valueOf(currentblncArr[i]);
+				String temp_blnc_type = "";
+				if (blnc_type.equals("Dr")) {
+					if (blnc < 0) {
+						blnc = blnc * (-1);
+						temp_blnc_type = ",balance_type='Cr'";
+					} else
+						temp_blnc_type = ",balance_type='Dr'";
+
+				} else {
+					blnc_type = ",balance_type='Cr'";
+				}
+
+				sqlString1 = "UPDATE st_rm_purchase_party_master_balance SET balance='" + currentblncArr[i] + "' "
+						+ temp_blnc_type + " WHERE party_id=" + partyLedgerId + "";
+				SQLQuery query2 = session.createSQLQuery(sqlString1);
+				query2.executeUpdate();
+				
+				LocalDate date = LocalDate.now();
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+				if (!hiddenBilIdArr[0].isEmpty()) {
+
+					for (int j = 0; j < lengthBillWise; j++) {
+						String is_used = "No";
+						if (typeOfRefArr[i].equals("Advance") || typeOfRefArr[i].equals("On Account")) {
+							sqlString1 = "INSERT INTO st_rm_bill_wise_details_sale(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`,`blnc_type`) values('"
+									+ typeOfRefArr[j] + "','" + partyLedgerId + "','" + hiddenAmntArr[j] + "','"
+									+ is_used + "','" + date.format(formatter) + "','Dr')";
+							SQLQuery query3 = session.createSQLQuery(sqlString1);
+							query3.executeUpdate();
+
+						} else {
+							sqlString1 = "SELECT * FROM st_rm_bill_wise_details_sale WHERE party_id=" + partyLedgerId
+									+ " and bill_id=" + Integer.valueOf(hiddenBilIdArr[j]) + "";
+							SQLQuery query3 = session.createSQLQuery(sqlString1);
+							List<Object[]> rst = query3.list();
+							Integer Amount = 0;
+							if (rst != null) {
+								for (Object[] obj : rst)
+									Amount = Integer.valueOf(obj[3].toString());
+							}
+							Amount = Amount - Integer.valueOf(hiddenAmntArr[i]);
+							if (Amount <= 0) {
+								is_used = "Yes";
+							}
+							sqlString1 = "UPDATE st_rm_bill_wise_details_sale SET balance='" + String.valueOf(Amount)
+									+ "',is_used='" + is_used + "' WHERE bill_id=" + Integer.valueOf(hiddenBilIdArr[j])
+									+ "";
+							SQLQuery query4 = session.createSQLQuery(sqlString1);
+							query4.executeUpdate();
+						}
+					}
+				}
+
+			}
+
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public int getJournalNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(journalId) from st_rm_txn_journal_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public boolean createTransactionJournal(String employeeUnder, String particulars, String cr_dr, String debitAmt,
+			String creditAmt, String narration) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getEmployeeId(employeeUnder);
+			String sqlString = "INSERT INTO st_rm_txn_journal_master(`empId`,`Dr_Cr`,`particulars`,`debitAmt`,`creditAmt`,`narration`) values("
+					+ empId + ",'" + cr_dr + "','" + particulars + "','" + debitAmt + "','" + creditAmt + "','"
+					+ narration + "')";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			return true;
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public int getSalesNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(salesId) from st_rm_txn_sales_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public List<String> getSalesStockItemList() {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		try {
+			response = new ArrayList<>();
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_stock_item_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+
+				for (Object[] obj : result) {
+					response.add(obj[1].toString());
+				}
+				return response;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return response;
+	}
+
+	public boolean createTransactionSales(String referenceNo, String employeeUnder, String partyAcc,
+			String salesAccount, String salesStockItems, String amount, String qty, String rate, String narration) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getEmployeeId(employeeUnder);
+			String sqlString = "INSERT INTO st_rm_txn_sales_master(`party_acc_name`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`reference_no`) values('"
+					+ partyAcc + "'," + empId + ",'" + salesAccount + "','" + salesStockItems + "','" + qty + "','"
+					+ rate + "','" + amount + "','" + narration + "','" + referenceNo + "')";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public int getPurchaseNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(purchaseId) from st_rm_txn_purchase_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public boolean createTransactionPurchase(String referenceNo, String employeeUnder, String partyAcc,
+			String salesAccount, String salesStockItems, String amount, String qty, String rate, String narration) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getEmployeeId(employeeUnder);
+			String sqlString = "INSERT INTO st_rm_txn_purchase_master(`party_acc_name`,`emp_id`,`purchase_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`reference_no`) values('"
+					+ partyAcc + "'," + empId + ",'" + salesAccount + "','" + salesStockItems + "','" + qty + "','"
+					+ rate + "','" + amount + "','" + narration + "','" + referenceNo + "')";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public int getCreditNoteNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(cnId) from st_rm_txn_creditNote_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public int getDebitNoteNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(dnId) from st_rm_txn_debitNote_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public boolean createTransactionDebitNote(String referenceNo, String employeeUnder, String partyAcc,
+			String salesAccount, String salesStockItems, String amount, String qty, String rate, String narration) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getEmployeeId(employeeUnder);
+			String sqlString = "INSERT INTO st_rm_txn_debitNote_master(`party_acc_name`,`emp_id`,`purchase_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`original_invoice_no`) values('"
+					+ partyAcc + "'," + empId + ",'" + salesAccount + "','" + salesStockItems + "','" + qty + "','"
+					+ rate + "','" + amount + "','" + narration + "','" + referenceNo + "')";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public String getUnitByItemName(String var) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_stock_item_master WHERE item_name='" + var + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null || !result.isEmpty()) {
+				for (Object[] obj : result)
+					if (!obj[4].toString().equals("Not Applicable")) {
+						return obj[4].toString();
+					}
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public boolean updateTransactionPartyBalance(String partyAcc, String currBalance, String hcrdr) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "SELECT  SUM(balance) FROM `st_rm_bill_wise_details` WHERE party_id =" + partyLedgerId
+					+ " and type_of_ref IN('Advance','On Account') and is_used='No' and purchase_used='No'";
+			SQLQuery query3 = session.createSQLQuery(sqlString);
+			List<Double> sum = query3.list();
+			String sumBlnc = "0";
+			Integer finalBalance = 0;
+			if (sum != null && !sum.isEmpty() && sum.get(0) != null) {
+				int tempSum = sum.get(0).intValue();
+				sumBlnc = String.valueOf(tempSum);
+				if (sumBlnc != null)
+					finalBalance = Integer.valueOf(currBalance) - Integer.valueOf(sumBlnc);
+				else
+					finalBalance = Integer.valueOf(currBalance);
+			} else
+				finalBalance = Integer.valueOf(currBalance);
+			String append = "";
+			if (hcrdr != null && !hcrdr.isEmpty()) {
+				append = ",balance_type='" + hcrdr + "'";
+			}
+			sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + String.valueOf(finalBalance) + "' "
+					+ append + " WHERE party_id=" + partyLedgerId + "";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+			sqlString = "UPDATE st_rm_bill_wise_details SET purchase_used='Yes' WHERE party_id =" + partyLedgerId
+					+ " and type_of_ref IN('Advance','On Account')";
+			SQLQuery query4 = session.createSQLQuery(sqlString);
+			query4.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public String getPartyBalanceByName(String partyAcc) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "SELECT * FROM st_rm_purchase_party_master_balance WHERE party_id=" + partyLedgerId + "";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			List<Object[]> rs = query2.list();
+			if ((rs != null || !rs.isEmpty()) && rs.size() > 0) {
+				for (Object[] obj : rs) {
+					return obj[2].toString() + "," + obj[3].toString();
+				}
+			} else {
+				int currBalance = 0;
+				sqlString = "INSERT INTO st_rm_purchase_party_master_balance(`party_id`,`balance`) values("
+						+ partyLedgerId + ",'" + currBalance + "')";
+				SQLQuery query3 = session.createSQLQuery(sqlString);
+				query3.executeUpdate();
+
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
+
+	public Map<String, Integer> getTaxesByItemName(String itemName) {
+		// TODO Auto-generated method stub
+
+		try {
+			Map<String, Integer> map = new HashMap<>();
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "SELECT alter_gst_id from st_rm_stock_item_master WHERE item_name='" + itemName + "'";
+			SQLQuery query = session.createSQLQuery(queryString);
+			List<Integer> result = query.list();
+			Integer id = 0;
+			if (result != null || !result.isEmpty()) {
+				for (Integer i : result)
+					id = i;
+			}
+			if (id != null && id > 0) {
+				queryString = "SELECT * FROM st_rm_stock_gst_master WHERE gst_id=" + id + "";
+				SQLQuery query2 = session.createSQLQuery(queryString);
+				List<Object[]> response = query2.list();
+				if (response != null || !response.isEmpty()) {
+					for (Object[] obj : response) {
+						map.put("IGST", (int) obj[1]);
+						map.put("CGST", (int) obj[2]);
+						map.put("SGST", (int) obj[3]);
+						map.put("cess", (int) obj[4]);
+
+					}
+					return map;
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean checkForBillByBill(String billByBill) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + billByBill + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "SELECT * from st_rm_credit_limit WHERE ledger_id=" + partyLedgerId
+					+ " and blnc_bill_by_bill='Yes'";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			List<Object[]> result = query2.list();
+			if (result != null && !result.isEmpty()) {
+				return true;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean updateOrCreateStock(String salesStockItems, String goDown, String qty, String unit,
+			String hiddenBatchNumber, String hiddenMfgDate, String hiddenExpDate, String hiddenExpAlert,
+			String hiddenExpAlertDate) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			String[] stockItemArray = salesStockItems.split(",");
+			String[] goDownArray = goDown.split(",");
+			String[] qtyArray = qty.split(",");
+			String[] unitArray = unit.split(",");
+			String[] batchArray = hiddenBatchNumber.split(",");
+			String[] MfgArray = hiddenMfgDate.split(",");
+			String[] ExpArray = hiddenExpDate.split(",");
+			String[] alertArray = hiddenExpAlert.split(",");
+			String[] alertDateArray = hiddenExpAlertDate.split(",");
+
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			int length = stockItemArray.length;
+			for (int i = 0; i < length - 1; i++) {
+
+				String sqlString = "SELECT st_it_id FROM st_rm_stock_item_master WHERE item_name='" + stockItemArray[i]
+						+ "'";
+				SQLQuery query = session.createSQLQuery(sqlString);
+				List<Integer> itemIdResult = query.list();
+				Integer itemId = itemIdResult.get(0);
+
+				sqlString = "SELECT gd_id FROM st_rm_Godown_master WHERE name='" + goDownArray[i] + "'";
+				query = session.createSQLQuery(sqlString);
+				List<Integer> godownResult = query.list();
+				Integer godown = godownResult.get(0);
+
+				sqlString = "SELECT availableQty FROM st_rm_item_qty_godown WHERE godown_id=" + godown + " and item_id="
+						+ itemId + " and batch='" + batchArray[i] + "'";
+				query = session.createSQLQuery(sqlString);
+				List<Integer> qtyresult = query.list();
+				Integer finalQty = 0;
+				if (qtyresult != null && qtyresult.size() > 0)
+					finalQty = qtyresult.get(0);
+				if (!qtyArray[i].isEmpty() && qtyArray[i] != null)
+					finalQty += Integer.valueOf(qtyArray[i]);
+
+				sqlString = "SELECT batch FROM st_rm_item_qty_godown WHERE godown_id=" + godown + " and item_id="
+						+ itemId + " and batch='" + batchArray[i] + "'";
+				query = session.createSQLQuery(sqlString);
+				List<String> batchresult = query.list();
+				if (!batchresult.isEmpty() && batchresult.size() > 0 && batchresult != null) {
+					sqlString = "UPDATE st_rm_item_qty_godown SET unit ='" + unitArray[i] + "',batch='" + batchArray[i]
+							+ "',mfg='" + MfgArray[i] + "',exp='" + ExpArray[i] + "',is_alert='" + alertArray[i]
+							+ "',alert_date='" + alertDateArray[i] + "',availableQty=" + finalQty + " WHERE item_id="
+							+ itemId + " and godown_id=" + godown + " and batch='" + batchArray[i] + "'";
+					query = session.createSQLQuery(sqlString);
+				} else {
+					sqlString = "INSERT INTO st_rm_item_qty_godown(`item_id`,`godown_id`,`unit`,`availableQty`,`batch`,`mfg`,`exp`,`is_alert`,`alert_date`) values("
+							+ itemId + "," + godown + ",'" + unitArray[i] + "'," + finalQty + ",'" + batchArray[i]
+							+ "','" + MfgArray[i] + "','" + ExpArray[i] + "','" + alertArray[i] + "','"
+							+ alertDateArray[i] + "')";
+					query = session.createSQLQuery(sqlString);
+
+				}
+
+				query.executeUpdate();
+				transaction.commit();
+				return true;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			transaction.rollback();
+		}
+		return false;
+	}
+
+	public String TotalQtyFromGoDown(String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT st_it_id FROM st_rm_stock_item_master WHERE item_name='" + itemName + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Integer> itemIdResult = query.list();
+			Integer itemId = itemIdResult.get(0);
+			sqlString = "SELECT availableQty from  st_rm_item_qty_godown WHERE item_id=" + itemId + "";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> rs = query.list();
+			Integer totalQty = 0;
+			for (Integer obj : rs) {
+				totalQty += obj;
+			}
+			return String.valueOf(totalQty);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String TotalQtyFromGoDownByName(String goDown, String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT gd_id FROM st_rm_Godown_master WHERE name='" + goDown + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Integer> IdResult = query.list();
+			Integer Id = IdResult.get(0);
+			sqlString = "SELECT st_it_id FROM st_rm_stock_item_master WHERE item_name='" + itemName + "'";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> itemResult = query.list();
+			Integer itemId = itemResult.get(0);
+
+			sqlString = "SELECT availableQty from  st_rm_item_qty_godown WHERE godown_id=" + Id + " and item_id="
+					+ itemId + "";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> rs = query.list();
+			Integer totalQty = 0;
+			for (Integer obj : rs) {
+				totalQty += obj;
+			}
+			return String.valueOf(totalQty);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public boolean updateOrCreateStockSale(String salesStockItems, String goDown, String qty, String unit,
+			String hiddenBatchNumber, String hiddenMfgDate, String hiddenExpDate, String hiddenExpAlert,
+			String hiddenExpAlertDate) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			String[] stockItemArray = salesStockItems.split(",");
+			String[] goDownArray = goDown.split(",");
+			String[] qtyArray = qty.split(",");
+			String[] unitArray = unit.split(",");
+			String[] batchArray = hiddenBatchNumber.split(",");
+			String[] MfgArray = hiddenMfgDate.split(",");
+			String[] ExpArray = hiddenExpDate.split(",");
+			String[] alertArray = hiddenExpAlert.split(",");
+			String[] alertDateArray = hiddenExpAlertDate.split(",");
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			int length = stockItemArray.length;
+			for (int i = 0; i < length - 1; i++) {
+
+				String sqlString = "SELECT st_it_id FROM st_rm_stock_item_master WHERE item_name='" + stockItemArray[i]
+						+ "'";
+				SQLQuery query = session.createSQLQuery(sqlString);
+				List<Integer> itemIdResult = query.list();
+				Integer itemId = itemIdResult.get(0);
+
+				sqlString = "SELECT gd_id FROM st_rm_Godown_master WHERE name='" + goDownArray[i] + "'";
+				query = session.createSQLQuery(sqlString);
+				List<Integer> godownResult = query.list();
+				Integer godown = godownResult.get(0);
+
+				sqlString = "SELECT availableQty FROM st_rm_item_qty_godown WHERE godown_id=" + godown + " and item_id="
+						+ itemId + "";
+				query = session.createSQLQuery(sqlString);
+				List<Integer> qtyresult = query.list();
+				Integer finalQty = 0;
+				if (qtyresult != null && qtyresult.size() > 0)
+					finalQty = qtyresult.get(0);
+				if (!qtyArray[i].isEmpty() && qtyArray[i] != null)
+					finalQty -= Integer.valueOf(qtyArray[i]);
+				sqlString = "SELECT batch FROM st_rm_item_qty_godown WHERE godown_id=" + godown + " and item_id="
+						+ itemId + " and batch='" + batchArray[i] + "'";
+				query = session.createSQLQuery(sqlString);
+				List<String> batchresult = query.list();
+
+				if (!batchresult.isEmpty() && batchresult.size() > 0 && batchresult != null) {
+					sqlString = "UPDATE st_rm_item_qty_godown SET unit ='" + unitArray[i] + "',batch='" + batchArray[i]
+							+ "',mfg='" + MfgArray[i] + "',exp='" + ExpArray[i] + "',is_alert='" + alertArray[i]
+							+ "',alert_date='" + alertDateArray[i] + "',availableQty=" + finalQty + " WHERE item_id="
+							+ itemId + " and godown_id=" + godown + " and batch='" + batchArray[i] + "'";
+					query = session.createSQLQuery(sqlString);
+				} else {
+					sqlString = "INSERT INTO st_rm_item_qty_godown(`item_id`,`godown_id`,`unit`,`availableQty`,`batch`,`mfg`,`exp`,`is_alert`,`alert_date`) values("
+							+ itemId + "," + godown + ",'" + unitArray[i] + "'," + finalQty + ",'" + batchArray[i]
+							+ "','" + MfgArray[i] + "','" + ExpArray[i] + "','" + alertArray[i] + "','"
+							+ alertDateArray[i] + "')";
+					query = session.createSQLQuery(sqlString);
+
+				}
+
+				query.executeUpdate();
+				transaction.commit();
+				return true;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			transaction.rollback();
+		}
+		return false;
+	}
+
+	public boolean insert_st_rm_stock_item_godown_opening_blc(String stockItemName, String itemGodown, String itemBatch,
+			String mfg, String exp, String itemQty, String rate, String openingBalance, String stockItemUnit) {
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select st_it_id from st_rm_stock_item_master Where item_name='" + stockItemName + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Integer> result = query.list();
+			Integer item_id = result.get(0);
+			sqlString = "select gd_id from st_rm_Godown_master where name = '" + itemGodown + "'";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> godown_result = query.list();
+			Integer gd_id = godown_result.get(0);
+			sqlString = "insert into st_rm_stock_item_godown_opening_blc(`item_id`,`godown_id`,`batch_id`,`mfg_date`,`exp_date`,`quantity`,`rate`,`opening_amt`) values("
+					+ item_id + "," + gd_id + ",'" + itemBatch + "','" + mfg + "','" + exp + "','" + itemQty + "','"
+					+ rate + "','" + openingBalance + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+
+			sqlString = "insert into st_rm_item_qty_godown(`item_id`,`godown_id`,`availableQty`,`unit`,`batch`) values("
+					+ item_id + "," + gd_id + ",'" + itemQty + "','" + stockItemUnit + "','" + itemBatch + "')";
+			SQLQuery query3 = session.createSQLQuery(sqlString);
+			query3.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public String TotalBatchesFromGoDownByName(String goDown, String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT gd_id FROM st_rm_Godown_master WHERE name='" + goDown + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Integer> IdResult = query.list();
+			Integer Id = IdResult.get(0);
+			sqlString = "SELECT st_it_id FROM st_rm_stock_item_master WHERE item_name='" + itemName + "'";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> itemResult = query.list();
+			Integer itemId = itemResult.get(0);
+
+			sqlString = "SELECT batch from  st_rm_item_qty_godown WHERE godown_id=" + Id + " and item_id=" + itemId
+					+ "";
+			query = session.createSQLQuery(sqlString);
+			List<String> rs = query.list();
+			String totalQty = "";
+			for (String obj : rs) {
+				if (!obj.isEmpty() && obj != null)
+					totalQty = totalQty + "," + obj;
+			}
+			return String.valueOf(totalQty);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String TotalBatchesDtFromGoDownByName(String goDown, String itemName, String hiddenBatchNumber) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT gd_id FROM st_rm_Godown_master WHERE name='" + goDown + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Integer> IdResult = query.list();
+			Integer Id = IdResult.get(0);
+			sqlString = "SELECT st_it_id FROM st_rm_stock_item_master WHERE item_name='" + itemName + "'";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> itemResult = query.list();
+			Integer itemId = itemResult.get(0);
+
+			sqlString = "SELECT * from  st_rm_item_qty_godown WHERE godown_id=" + Id + " and item_id=" + itemId
+					+ " and batch='" + hiddenBatchNumber + "'";
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> rs = query.list();
+			String result = "";
+			for (Object[] obj : rs) {
+				result = obj[6].toString() + "," + obj[7].toString() + "," + obj[4].toString();
+			}
+			return result;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public List<String> getBankNameList() {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		try {
+			response = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_acc_ledger_master WHERE ledger_under_group_name IN('Bank occ a/c','Bank Account','Bank od a/c')";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			if (result != null) {
+				for (Object[] obj : result)
+					response.add(obj[1].toString());
+				return response;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return response;
+	}
+
+	public boolean InitialBalace(String openingDate, String openingBalance, String cr_Dr, String ledgerName,
+			String groupUnder) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			if (openingDate == null || openingDate.isEmpty()) {
+				LocalDate date = LocalDate.now();
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+				openingDate = date.format(formatter);
+			}
+			if (openingBalance == null || openingBalance.isEmpty()) {
+				openingBalance = "0";
+			}
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + ledgerName + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			if (groupUnder.equals("Sundry creditors") || groupUnder.equals("Loans(liabilities)")
+					|| groupUnder.equals("Bank od a/c") || groupUnder.equals("Capital account")
+					|| groupUnder.equals("Branch/Division") || groupUnder.equals("Suspense account")
+					|| groupUnder.equals("Provision") || groupUnder.equals("Bank occ a/c")
+					|| groupUnder.equals("Current liabilities") || groupUnder.equals("Duties & taxes")
+					|| groupUnder.equals("Duties & taxes") || groupUnder.equals("Income(indirect)")
+					|| groupUnder.equals("Income(direct)") || groupUnder.equals("Sales account")
+					|| groupUnder.equals("Reserves & surplus") || groupUnder.equals("Retained earning")
+					|| groupUnder.equals("Secured loans") || groupUnder.equals("Unsecured Loans"))
+				cr_Dr = "Cr";
+			else
+				cr_Dr = "Dr";
+			sqlString = "INSERT INTO st_rm_purchase_party_master_balance(`party_id`,`balance`,`balance_type`,`opening_date`) values("
+					+ partyLedgerId + ",'" + openingBalance + "','" + cr_Dr + "','" + openingDate + "')";
+			SQLQuery query1 = session.createSQLQuery(sqlString);
+			query1.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean insertCalculateInterest(String ledgerName, String intesestBasedOn, String foramtAdded,
+			String foramtDeduct, String rate, String ratePer, String rateOn) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "select ledger_id from st_rm_acc_ledger_master WHERE ledger_name='" + ledgerName + "'";
+			SQLQuery query2 = session.createSQLQuery(queryString);
+			List<Integer> result = query2.list();
+			Integer Ledger_id = result.get(0);
+			queryString = "INSERT INTO st_rm_ledger_interset_calculation(`ledger_id`,`interest_based_on`,`amt_added`,`amt_deduct`,`rate`,`rate_per`,`rate_on`) values("
+					+ Ledger_id + ",'" + intesestBasedOn + "','" + foramtAdded + "','" + foramtDeduct + "'," + rate
+					+ ",'" + ratePer + "','" + rateOn + "')";
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public String getPartyCreditLimitByName(String partyAcc) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "SELECT * FROM st_rm_credit_limit WHERE ledger_id=" + partyLedgerId + "";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			List<Object[]> rs = query2.list();
+			if ((rs != null || !rs.isEmpty()) && rs.size() > 0) {
+				for (Object[] obj : rs) {
+					return obj[4].toString();
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "none";
+	}
+
+	public String getNewBillNo(String partyAcc, String typeOfRef) {
+		// TODO Auto-generated method stub
+		String finalString = "";
+
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "SELECT * FROM st_rm_bill_wise_details WHERE party_id=" + partyLedgerId
+					+ " and type_of_ref IN('" + typeOfRef + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			List<Object[]> rs = query2.list();
+			if ((rs != null && !rs.isEmpty())) {
+				for (Object[] obj : rs) {
+					int id = (int) obj[0];
+					id = id + 1;
+					finalString = String.valueOf(id);
+				}
+			} else {
+				finalString = "1";
+			}
+			sqlString = "SELECT * FROM st_rm_credit_limit WHERE ledger_id=" + partyLedgerId + "";
+			SQLQuery query3 = session.createSQLQuery(sqlString);
+			List<Object[]> rs1 = query3.list();
+			if ((rs1 != null && !rs1.isEmpty())) {
+				for (Object[] obj : rs1) {
+					int id = (int) obj[2];
+					finalString = finalString + "," + (int) obj[2];
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return finalString;
+	}
+
+	public String getOldBillNo(String partyAcc, String typeOfRef, String suffix) {
+		// TODO Auto-generated method stub
+		String finalString = "";
+
+		try {
+			String tableName = "st_rm_bill_wise_details" + suffix;
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "SELECT * FROM " + tableName + " WHERE party_id=" + partyLedgerId
+					+ " and type_of_ref IN('Agst Ref','Advance','On Account') and is_used='No'";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			List<Object[]> rs = query2.list();
+			String tempString = "";
+			if ((rs != null && !rs.isEmpty())) {
+				for (Object[] obj : rs) {
+					int id = (int) obj[0];
+					tempString = tempString + String.valueOf(id) + " " + obj[5].toString() + " " + obj[3].toString()
+							+ " " + obj[6].toString() + ";";
+				}
+				finalString = tempString;
+			} else {
+				finalString = "1";
+			}
+			sqlString = "SELECT * FROM st_rm_credit_limit WHERE ledger_id=" + partyLedgerId + "";
+			SQLQuery query3 = session.createSQLQuery(sqlString);
+			List<Object[]> rs1 = query3.list();
+			if ((rs1 != null && !rs1.isEmpty())) {
+				for (Object[] obj : rs1) {
+					int id = (int) obj[2];
+					finalString = finalString + "," + (int) obj[2];
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return finalString;
+	}
+
+	public boolean insertNewBill(String paymentDate, String string, String partyAcc, String totalAmt) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "INSERT INTO st_rm_bill_wise_details(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`) values('"
+					+ string + "'," + partyLedgerId + ",'" + totalAmt + "','No','" + paymentDate + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean insertNewBillSale(String saleDate, String string, String partyAcc, String totalAmt) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "INSERT INTO st_rm_bill_wise_details_sale(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`) values('"
+					+ string + "'," + partyLedgerId + ",'" + totalAmt + "','No','" + saleDate + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean updateTransactionPartyBalanceSale(String partyAcc, String currBalance, String hcrdr) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			sqlString = "SELECT  SUM(balance) FROM `st_rm_bill_wise_details_sale` WHERE party_id =" + partyLedgerId
+					+ " and type_of_ref IN('Advance','On Account') and is_used='No' and purchase_used='No'";
+			SQLQuery query3 = session.createSQLQuery(sqlString);
+			List<Double> sum = query3.list();
+			String sumBlnc = "0";
+			Integer finalBalance = 0;
+			if (sum != null && !sum.isEmpty() && sum.get(0) != null) {
+				int tempSum = sum.get(0).intValue();
+				sumBlnc = String.valueOf(tempSum);
+				if (sumBlnc != null)
+					finalBalance = Integer.valueOf(currBalance) - Integer.valueOf(sumBlnc);
+				else
+					finalBalance = Integer.valueOf(currBalance);
+			} else
+				finalBalance = Integer.valueOf(currBalance);
+			String append = "";
+			if (hcrdr != null && !hcrdr.isEmpty()) {
+				append = ",balance_type='" + hcrdr + "'";
+			}
+			sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + String.valueOf(finalBalance) + "' "
+					+ append + " WHERE party_id=" + partyLedgerId + "";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+			sqlString = "UPDATE st_rm_bill_wise_details_sale SET purchase_used='Yes' WHERE party_id =" + partyLedgerId
+					+ " and type_of_ref IN('Advance','On Account')";
+			SQLQuery query4 = session.createSQLQuery(sqlString);
+			query4.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean updateTransactionPartyBalanceJournal(String particulars, String debitAmt, String creditAmt,
+			String cr_dr) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			String particularsArr[] = particulars.split(",");
+			String debitAmtArr[] = debitAmt.split(",");
+			String creditAmtArr[] = creditAmt.split(",");
+			String cr_drArr[] = cr_dr.split(",");
+			int length = particularsArr.length;
+			String sqlString = "";
+			for (int i = 0; i < length; i++) {
+				String tempParticularName = particularsArr[i].trim();
+				int ledgerId = findLedgerIdByName(tempParticularName);
+				String partyBalance = getPartyBalanceById(ledgerId);
+				String partyBalanceType = getPartyBalanceType(ledgerId);
+				String partyType = getPartyTypeById(ledgerId);
+				String BalanceSheetSide = getBalanceSheetSideByName(partyType);
+				Integer partyBalanceToInt = 0;
+				String new_blnc_type = partyBalanceType;
+				if (partyType.equals("Sundry creditors")) {
+					Integer totalBlnc = Integer.valueOf(debitAmtArr[i].trim())
+							+ Integer.valueOf(creditAmtArr[i].trim());
+					LocalDate date = LocalDate.now();
+					DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+					insertNewBill(date.format(formatter), "Agst Ref", tempParticularName, String.valueOf(totalBlnc));
+					if (partyBalanceType.equals("Dr")) {
+						partyBalanceToInt = Integer.valueOf(partyBalance) + totalBlnc;
+						if (partyBalanceToInt < 0) {
+							partyBalanceToInt = partyBalanceToInt * (-1);
+							new_blnc_type = "Cr";
+						}
+					} else {
+						partyBalanceToInt = Integer.valueOf(partyBalance) - totalBlnc;
+					}
+				}
+				if (partyType.equals("Sundry debtors")) {
+					Integer totalBlnc = Integer.valueOf(debitAmtArr[i].trim())
+							+ Integer.valueOf(creditAmtArr[i].trim());
+					LocalDate date = LocalDate.now();
+					DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+					insertNewBillSale(date.format(formatter), "Agst Ref", tempParticularName,
+							String.valueOf(totalBlnc));
+					if (partyBalanceType.equals("Cr")) {
+						partyBalanceToInt = Integer.valueOf(partyBalance) + totalBlnc;
+					} else {
+
+						partyBalanceToInt = Integer.valueOf(partyBalance) - totalBlnc;
+						if (partyBalanceToInt < 0) {
+							partyBalanceToInt = partyBalanceToInt * (-1);
+							new_blnc_type = "Cr";
+						}
+					}
+				}
+
+				if (!partyType.equals("Sundry debtors") && !partyType.equals("Sundry creditors")) {
+					Integer totalBlnc = Integer.valueOf(debitAmtArr[i].trim())
+							+ Integer.valueOf(creditAmtArr[i].trim());
+					if (BalanceSheetSide.equals("Liability")) {
+						if (partyBalanceType.equals("Cr")) {
+							if (cr_drArr[i].trim().equals("Dr")) {
+								partyBalanceToInt = Integer.valueOf(partyBalance) - totalBlnc;
+								if (partyBalanceToInt < 0) {
+									partyBalanceToInt = partyBalanceToInt * (-1);
+									new_blnc_type = "Dr";
+								} else {
+									new_blnc_type = "Cr";
+								}
+							} else {
+								partyBalanceToInt = Integer.valueOf(partyBalance) + totalBlnc;
+								new_blnc_type = "Cr";
+							}
+
+						} else {
+							if (cr_drArr[i].trim().equals("Cr")) {
+								partyBalanceToInt = Integer.valueOf(partyBalance) - totalBlnc;
+								if (partyBalanceToInt < 0) {
+									partyBalanceToInt = partyBalanceToInt * (-1);
+									new_blnc_type = "Cr";
+								}
+							} else {
+								partyBalanceToInt = Integer.valueOf(partyBalance) + totalBlnc;
+								new_blnc_type = "Dr";
+							}
+
+						}
+					}
+					if (BalanceSheetSide.equals("Assets")) {
+						if (partyBalanceType.equals("Dr")) {
+							if (cr_drArr[i].trim().equals("Cr")) {
+								partyBalanceToInt = Integer.valueOf(partyBalance) - totalBlnc;
+								if (partyBalanceToInt < 0) {
+									partyBalanceToInt = partyBalanceToInt * (-1);
+									new_blnc_type = "Cr";
+								} else {
+									new_blnc_type = "Dr";
+								}
+							} else {
+								partyBalanceToInt = Integer.valueOf(partyBalance) + totalBlnc;
+							}
+
+						} else {
+							if (cr_drArr[i].trim().equals("Cr")) {
+								partyBalanceToInt = Integer.valueOf(partyBalance) + totalBlnc;
+								new_blnc_type = "Cr";
+							} else {
+								partyBalanceToInt = Integer.valueOf(partyBalance) - totalBlnc;
+								if (partyBalanceToInt < 0) {
+									partyBalanceToInt = partyBalanceToInt * (-1);
+									new_blnc_type = "Dr";
+								}
+							}
+
+						}
+
+					}
+				}
+
+				sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + partyBalanceToInt
+						+ "' WHERE party_id=" + ledgerId + "";
+				SQLQuery query = session.createSQLQuery(sqlString);
+				query.executeUpdate();
+
+			}
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	private String getBalanceSheetSideByName(String partyType) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_group_master where group_name='" + partyType + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			String partyLedgerType = "";
+			for (Object[] obj : partyIds) {
+				partyLedgerType = obj[7].toString();
+			}
+			return partyLedgerType;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public String getPartyTypeById(int ledgerId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_id=" + ledgerId + "";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			String partyLedgerType = "";
+			for (Object[] obj : partyIds) {
+				partyLedgerType = obj[2].toString();
+			}
+			return partyLedgerType;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private String getPartyBalanceType(int ledgerId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_purchase_party_master_balance where party_id=" + ledgerId + "";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			String partyLedgerBlncType = "";
+			for (Object[] obj : partyIds) {
+				partyLedgerBlncType = obj[3].toString();
+			}
+			return partyLedgerBlncType;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private String getPartyBalanceById(int ledgerId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_purchase_party_master_balance where party_id=" + ledgerId + "";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			String partyLedgerBlnc = "";
+			for (Object[] obj : partyIds) {
+				partyLedgerBlnc = obj[2].toString();
+			}
+			return partyLedgerBlnc;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public int findLedgerIdByName(String partyName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyName + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			return partyLedgerId;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	public boolean updateTransactionPartyBalanceSaleCreditNote(String partyAcc, String currBalance, String hcrdr) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> partyIds = query.list();
+			int partyLedgerId = 0;
+			for (Object[] obj : partyIds) {
+				partyLedgerId = (int) obj[0];
+			}
+			String finalBalance = currBalance;
+			String append = "";
+			if (hcrdr != null && !hcrdr.isEmpty()) {
+				append = ",balance_type='" + hcrdr + "'";
+			}
+			sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + finalBalance + "' " + append
+					+ " WHERE party_id=" + partyLedgerId + "";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public int getCreditPeriod(int partyId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_credit_limit WHERE ledger_id="+partyId+"";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			for(Object[] obj:result) {
+				if(obj[1].toString().equals("Yes")) {
+					return (int)obj[2];
+				}
+				else {
+					return -1;
+				}
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return -1;
+	}
+
+	public List<String> getBillDetails(int partyId, String suffix, String dateBeforePeriod) {
+		// TODO Auto-generated method stub
+		try {
+			List<String> response = new ArrayList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_bill_wise_details"+suffix+" WHERE party_id="+partyId+" and type_of_ref='Agst Ref' and is_used='No' and date<='"+dateBeforePeriod+"'";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+				for(Object[] obj:result) {
+					LocalDateTime effectiveDate = LocalDateTime.parse(dateBeforePeriod);
+					LocalDateTime effectiveDateDb = LocalDateTime.parse(obj[5].toString());
+					
+					//Now access the values as below
+					Years age = Years.yearsBetween(effectiveDateDb, effectiveDate);
+					Months months = Months.monthsBetween(effectiveDateDb, effectiveDate);
+					Days days = Days.daysBetween(effectiveDateDb, effectiveDate);
+					String resu="D:"+days.getDays()+" M:"+months.getMonths()+" Y:"+age.getYears();	
+						response.add("BillId="+(int)obj[0]+" Date="+obj[5].toString()+", Amount="+obj[3].toString()+" "+obj[6].toString()+", Days Exceed="+resu);
+				}
+				return response;
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 }
