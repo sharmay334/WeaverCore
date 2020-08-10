@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 
@@ -58,18 +59,17 @@ public class BOLoginController {
 		boolean isDigitThr = false;
 		boolean isSpecialChar = false;
 		char[] passArr = newPassword.toCharArray();
-		for(int i=0;i<passArr.length;i++){
-			if(Character.isUpperCase(passArr[i])){
+		for (int i = 0; i < passArr.length; i++) {
+			if (Character.isUpperCase(passArr[i])) {
 				isUpperThr = true;
 			}
-			if(Character.isLowerCase(passArr[i])){
+			if (Character.isLowerCase(passArr[i])) {
 				isLowerThr = true;
 			}
-			if(Character.isDigit(passArr[i])){
+			if (Character.isDigit(passArr[i])) {
 				isDigitThr = true;
 			}
-			if(!Character.isLetterOrDigit(passArr[i]) && 
-					!Character.isSpaceChar(passArr[i])){
+			if (!Character.isLetterOrDigit(passArr[i]) && !Character.isSpaceChar(passArr[i])) {
 				isSpecialChar = true;
 			}
 		}
@@ -84,12 +84,13 @@ public class BOLoginController {
 		BOLoginDaoImpl daoImpl = new BOLoginDaoImpl();
 		try {
 			session = HibernateSessionFactory.getSession();
-			UserDetailsBean usrdetBean = new UserDetailsBean(); 
+			UserDetailsBean usrdetBean = new UserDetailsBean();
 			UserMgmtController userMgmtController = new UserMgmtController();
-			//today i have to fetch user detail bean for line no 97 as a parameter for sms service forgot password
+			// today i have to fetch user detail bean for line no 97 as a parameter for sms
+			// service forgot password
 			tx = session.beginTransaction();
 			returnString = daoImpl.forgotPassword(email, session);
-			
+
 			if (!returnString.equals("emailId_not_registered")) {
 				Map<String, String> emailContentMap = new LinkedHashMap<String, String>();
 				emailContentMap.put("EmailId", email);
@@ -97,9 +98,9 @@ public class BOLoginController {
 				emailContentMap.put("ActivationCode", returnString.split("_")[1]);
 				CommMgmtController.callSendMail(emailContentMap, "BO_FORGOT_PASSWORD",
 						Short.valueOf(returnString.split("_")[2]), (short) 1, 0, session);
-				usrdetBean = userMgmtController.getUserInfoBeanPhone(email,usrdetBean);
+				usrdetBean = userMgmtController.getUserInfoBeanPhone(email, usrdetBean);
 				usrdetBean.setUserName(returnString.split("_")[0]);
-				CommMgmtController.callSendSms(usrdetBean,"BO_FORGOT_PASSWORD_SMS",session,emailContentMap);
+				// CommMgmtController.callSendSms(usrdetBean,"BO_FORGOT_PASSWORD_SMS",session,emailContentMap);
 			}
 			tx.commit();
 		} catch (HibernateException se) {
@@ -134,13 +135,13 @@ public class BOLoginController {
 					sessionId, domainId, logintry, session);
 			tx.commit();
 			session.flush();
-			if(loginBean.getStatus().equals("FirstTime") || loginBean.getStatus().equals("success")) {
-				roleMgmtDao.inactiveUserPriv(session,loginBean);
+			if (loginBean.getStatus().equals("FirstTime") || loginBean.getStatus().equals("success")) {
+				roleMgmtDao.inactiveUserPriv(session, loginBean);
 			}
-			
+
 			if (!(loginBean.getStatus().equals("success") || loginBean.getStatus().equals("FirstTime"))) {
-				
-				roleMgmtDao.inactiveUserPriv(session,loginBean);
+
+				roleMgmtDao.inactiveUserPriv(session, loginBean);
 				return loginBean;
 			}
 
@@ -164,9 +165,8 @@ public class BOLoginController {
 			}
 			/*
 			 * if(loginBean.getOldSessionId()!=null &&
-			 * !loginBean.getOldSessionId().equals(sessionId)){ //Logout User
-			 * Which login with oldSessionId
-			 * logoutUser(loginBean.getOldSessionId()); }
+			 * !loginBean.getOldSessionId().equals(sessionId)){ //Logout User Which login
+			 * with oldSessionId logoutUser(loginBean.getOldSessionId()); }
 			 */
 		}
 		return loginBean;
@@ -191,6 +191,21 @@ public class BOLoginController {
 			if (session != null && session.isOpen()) {
 				session.close();
 			}
+		}
+	}
+
+	public void insertLoginAlert(LoginBean loginBean) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			if (loginBean.getUserInfo().getParentUserId() != 0) {
+				SQLQuery query = session.createSQLQuery("INSERT INTO bo_um_login_alert(`username`) values('"
+						+ loginBean.getUserInfo().getUserName() + "')");
+				query.executeUpdate();
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 }

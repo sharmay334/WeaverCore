@@ -19,6 +19,7 @@ public class StockItemBean {
 	private String expiry;
 	private String isStandard;
 	private String costTrack;
+	private String itemRate;
 
 	public int getItemId() {
 		return itemId;
@@ -162,6 +163,14 @@ public class StockItemBean {
 
 	public void setCostTrack(String costTrack) {
 		this.costTrack = costTrack;
+	}
+
+	public String getItemRate() {
+		return itemRate;
+	}
+
+	public void setItemRate(String itemRate) {
+		this.itemRate = itemRate;
 	}
 
 }

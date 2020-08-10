@@ -69,7 +69,19 @@ public class UserDetailsBean implements Serializable {
 	private String drivingDoc;
 	private String passbookDoc;
 	private String addressDoc;
-
+	private String approver;
+	private String leaves;
+	private String attendanceTime;
+	private String attendanceSelfie;
+	private String dailyAllowance;
+	private String dailyAllowanceDoc;
+	private String exCityAllowance;
+	private String cityAllowance;
+	private String travellingAllowance;
+	private String weekDay;
+	private String role;
+	private String region;	
+	private String authAmount;
 	
 
 	public String getFatherName() {
@@ -552,4 +564,112 @@ public class UserDetailsBean implements Serializable {
 		this.lastnameedit = lastnameedit;
 	}
 
+	public String getApprover() {
+		return approver;
+	}
+
+	public void setApprover(String approver) {
+		this.approver = approver;
+	}
+
+	public String getLeaves() {
+		return leaves;
+	}
+
+	public void setLeaves(String leaves) {
+		this.leaves = leaves;
+	}
+
+	public String getAttendanceTime() {
+		return attendanceTime;
+	}
+
+	public void setAttendanceTime(String attendanceTime) {
+		this.attendanceTime = attendanceTime;
+	}
+
+	public String getAttendanceSelfie() {
+		return attendanceSelfie;
+	}
+
+	public void setAttendanceSelfie(String attendanceSelfie) {
+		this.attendanceSelfie = attendanceSelfie;
+	}
+
+	public String getDailyAllowance() {
+		return dailyAllowance;
+	}
+
+	public void setDailyAllowance(String dailyAllowance) {
+		this.dailyAllowance = dailyAllowance;
+	}
+
+	public String getDailyAllowanceDoc() {
+		return dailyAllowanceDoc;
+	}
+
+	public void setDailyAllowanceDoc(String dailyAllowanceDoc) {
+		this.dailyAllowanceDoc = dailyAllowanceDoc;
+	}
+
+	public String getExCityAllowance() {
+		return exCityAllowance;
+	}
+
+	public void setExCityAllowance(String exCityAllowance) {
+		this.exCityAllowance = exCityAllowance;
+	}
+
+	public String getCityAllowance() {
+		return cityAllowance;
+	}
+
+	public void setCityAllowance(String cityAllowance) {
+		this.cityAllowance = cityAllowance;
+	}
+
+	public String getTravellingAllowance() {
+		return travellingAllowance;
+	}
+
+	public void setTravellingAllowance(String travellingAllowance) {
+		this.travellingAllowance = travellingAllowance;
+	}
+
+	public String getWeekDay() {
+		return weekDay;
+	}
+
+	public void setWeekDay(String weekDay) {
+		this.weekDay = weekDay;
+	}
+
+	public String getRole() {
+		return role;
+	}
+
+	public void setRole(String role) {
+		this.role = role;
+	}
+
+	public String getRegion() {
+		return region;
+	}
+
+	public void setRegion(String region) {
+		this.region = region;
+	}
+
+	public static long getSerialversionuid() {
+		return serialVersionUID;
+	}
+
+	public String getAuthAmount() {
+		return authAmount;
+	}
+
+	public void setAuthAmount(String authAmount) {
+		this.authAmount = authAmount;
+	}
+	
 }

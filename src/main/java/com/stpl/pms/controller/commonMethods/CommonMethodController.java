@@ -13,6 +13,7 @@ import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
+import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
@@ -28,6 +29,7 @@ import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSClient;
 import com.stpl.pms.adv.ClickOnikInformer;
 import com.stpl.pms.adv.CouponRajaInformer;
+import com.stpl.pms.commonJavabeans.AttendanceBean;
 import com.stpl.pms.daoImpl.commonMethods.CommonMethodDaoImpl;
 import com.stpl.pms.exception.PMSErrorCode;
 import com.stpl.pms.exception.PMSErrorMessage;
@@ -2098,6 +2100,9 @@ public class CommonMethodController {
 		 }
 		 return "";
 	 }
+
+	public Map<String, AttendanceBean> getAttendanceReport(int empId, int companyId, String fromDate, String toDate,
+			String employeeName, String companyName) {return null;}
 	 
 	 /***
 	  * Event List for Map New Event module in back office.

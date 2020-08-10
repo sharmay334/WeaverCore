@@ -71,58 +71,101 @@
 			<column name="bloodGroup" length="20" />
 		</property>
 		<property name="branch" type="java.lang.String">
-			<column name="branch" length="20" />
+			<column name="branch" length="50" />
 		</property>
 		<property name="currentAddress" type="java.lang.String">
-			<column name="currentAddress" length="20" />
+			<column name="currentAddress" length="50" />
 		</property>
 		<property name="permanentAddress" type="java.lang.String">
-			<column name="permanentAddress" length="20" />
+			<column name="permanentAddress" length="50" />
 		</property>
 		<property name="doj" type="java.lang.String">
-			<column name="doj" length="20" />
+			<column name="doj" length="50" />
 		</property>
 		<property name="dol" type="java.lang.String">
-			<column name="dol" length="20" />
+			<column name="dol" length="50" />
 		</property>
 		<property name="country" type="java.lang.String">
-			<column name="country" length="20" />
+			<column name="country" length="50" />
 		</property>
 		<property name="state" type="java.lang.String">
-			<column name="state" length="20" />
+			<column name="state" length="50" />
 		</property>
 		<property name="pincode" type="java.lang.String">
-			<column name="pincode" length="20" />
+			<column name="pincode" length="50" />
 		</property>
 		<property name="photo_doc" type="java.lang.String">
-			<column name="photo_doc" length="20" />
+			<column name="photo_doc" length="50" />
 		</property>
 		<property name="oldSalarySlip" type="java.lang.String">
-			<column name="oldSalarySlip" length="20" />
+			<column name="oldSalarySlip" length="50" />
 		</property>
 		<property name="expCertificate" type="java.lang.String">
-			<column name="expCertificate" length="20" />
+			<column name="expCertificate" length="50" />
 		</property>
 		<property name="eduCertificate" type="java.lang.String">
-			<column name="eduCertificate" length="20" />
+			<column name="eduCertificate" length="50" />
 		</property>
 		<property name="panDoc" type="java.lang.String">
-			<column name="panDoc" length="20" />
+			<column name="panDoc" length="50" />
 		</property>
 		<property name="aadharDoc" type="java.lang.String">
-			<column name="aadharDoc" length="20" />
+			<column name="aadharDoc" length="50" />
 		</property>
 		<property name="voterDoc" type="java.lang.String">
-			<column name="voterDoc" length="20" />
+			<column name="voterDoc" length="50" />
 		</property>
 		<property name="drivingDoc" type="java.lang.String">
-			<column name="drivingDoc" length="20" />
+			<column name="drivingDoc" length="50" />
 		</property>
 		<property name="passbookDoc" type="java.lang.String">
-			<column name="passbookDoc" length="20" />
+			<column name="passbookDoc" length="50" />
 		</property>
 		<property name="addressDoc" type="java.lang.String">
-			<column name="addressDoc" length="20" />
+			<column name="addressDoc" length="50" />
+		</property>
+		
+		<property name="approver" type="java.lang.String">
+			<column name="manager_name" length="50" />
+		</property>
+		<property name="leaves" type="java.lang.String">
+			<column name="leaves" length="50" />
+		</property>
+		<property name="attendanceTime" type="java.lang.String">
+			<column name="attendance_time" length="50" />
+		</property>
+		<property name="attendanceSelfie" type="java.lang.String">
+			<column name="selfie_allow" length="50" />
+		</property>
+		<property name="dailyAllowance" type="java.lang.String">
+			<column name="daily_allowance" length="50" />
+		</property>
+		<property name="dailyAllowanceDoc" type="java.lang.String">
+			<column name="daily_allowance_doc" length="50" />
+		</property>
+		<property name="exCityAllowance" type="java.lang.String">
+			<column name="ex_city_allowance" length="50" />
+		</property>
+		<property name="cityAllowance" type="java.lang.String">
+			<column name="city_allowance" length="50" />
+		</property>
+		<property name="travellingAllowance" type="java.lang.String">
+			<column name="travelling_allowance" length="50" />
+		</property>
+		<property name="weekDay" type="java.lang.String">
+			<column name="week_day_off" length="50" />
+		</property>
+		<property name="role" type="java.lang.String">
+			<column name="role" length="50" />
+		</property>
+		<property name="region" type="java.lang.String">
+			<column name="region" length="50" />
+		</property>
+		<property name="authAmount" type="java.lang.String">
+			<column name="auth_amount" length="50" />
+		</property>
+		<property name="department" type="java.lang.String">
+			<column name="department" length="50" />
 		</property>
 	</class>
 </hibernate-mapping>

@@ -28,6 +28,10 @@ import com.stpl.pms.exception.PMSException;
 import com.stpl.pms.hibernate.mapping.StCmsTemplateMaster;
 import com.stpl.pms.hibernate.mapping.StGenSmsEmailProviderMaster;
 
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
 public class SendSMS extends Thread {
 	
 	private String  mobileNo;
@@ -77,14 +81,7 @@ public class SendSMS extends Thread {
 	}
 	
 	public void run(){
-		if(smsContentList!=null) {
-			sendSMS(smsContentList, provider, smsType, domainId, aliasId );
-		} else if(varMap!=null) {
-			sendSMS(varMap, provider, smsType, domainId, aliasId );
-		} else {
-			sendSMS(aliasId,mobileNo, msg, provider);
-		}
-		
+		sendSMSAlert("","",mobileNo,"",msg,"","");
 	}
 	
 	public  static void massMsgSend(List<LinkedHashMap<String,String>> smsContentList,String smsType, short domainId, short aliasId,Session session) throws PMSException{
@@ -130,7 +127,30 @@ public class SendSMS extends Thread {
 			e.printStackTrace();
 		}
 	}
-
+	public void sendSMSAlert(String user,String pass,String mobile,String smsId,String sms,String flash,String smsId1) {
+		
+		String urlHeader = "user=Gir2020&password=Aj321!@%23&msisdn="+mobile+"&sid=GKWOTP&msg="+sms+"&fl=0&gwid=2";
+		OkHttpClient client = new OkHttpClient().newBuilder()
+				  .build();
+				Request request = new Request.Builder()
+				  .url("http://smst.sayonetechnologies.com/vendorsms/pushsms.aspx?"+urlHeader)
+				  .method("GET", null)
+				  .build();
+				Response response = null;
+				try {
+					response = client.newCall(request).execute();
+					
+					System.out.println("[:::::::::::SMS INFO::::::] SENT SMS TO "+mobile +" -------RESPONSE"+response);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					System.out.println("[:::::::::::SMS ERROR::::::]FAILED TO SEND SMS TO "+mobile);
+				}
+				finally {
+					response.close();
+				}
+		
+		
+	}
 	public void sendSMSComm(Map<String,String> varMap, String provider, StCmsTemplateMaster tempMas, short aliasId) {
 		try {
 			String msg = tempMas.getTemplatePath();

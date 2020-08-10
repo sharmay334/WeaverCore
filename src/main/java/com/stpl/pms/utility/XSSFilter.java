@@ -156,7 +156,7 @@ public class XSSFilter implements Filter {
 	public void doFilter(ServletRequest request, ServletResponse response, 
 			FilterChain chain) throws IOException, ServletException {	
 	XSSRequestWrapper.xssFlag=false;
-	
+	request.setCharacterEncoding("UTF-8");
 	XSSRequestWrapper wrapper = new XSSRequestWrapper((HttpServletRequest)request);
 	if(!((HttpServletRequest)request).getServletPath().contains("cms"))
 		wrapper.getParameterMap();

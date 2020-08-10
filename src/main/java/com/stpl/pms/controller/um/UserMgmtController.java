@@ -843,4 +843,36 @@ public class UserMgmtController {
 		}
 		return false;
 	}
+
+	public List<StRmBoUserInfo> searchBoUsers(String companyName, String employeeName, String string) {
+		// TODO Auto-generated method stub
+
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(StRmBoUserMaster.class);
+			criteria.add(Restrictions.eq("userName", employeeName));
+			List<StRmBoUserMaster> userMasterList = criteria.list();
+			Criteria criteria2 = session.createCriteria(StRmBoUserInfo.class);
+			criteria2.add(Restrictions.eq("userId", userMasterList.get(0).getUserId()));
+			List<StRmBoUserInfo> result = criteria2.list();
+			return result;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public StRmBoUserInfo searchBoUser(int user_id) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria2 = session.createCriteria(StRmBoUserInfo.class);
+			criteria2.add(Restrictions.eq("userId", user_id));
+			List<StRmBoUserInfo> result = criteria2.list();
+			return result.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 }
