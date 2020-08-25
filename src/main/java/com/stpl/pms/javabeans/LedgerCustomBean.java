@@ -15,7 +15,11 @@ public class LedgerCustomBean {
 	private String propName;
 	private String contact;
 	private String email;
-
+	private String oBalance;
+	private String oBalanceType;
+	private String secAmount;
+	private String intersetStartDate;
+	
 	public int getLedgerId() {
 		return ledgerId;
 	}
@@ -119,6 +123,38 @@ public class LedgerCustomBean {
 
 	public void setEmail(String email) {
 		this.email = email;
+	}
+
+	public String getoBalance() {
+		return oBalance;
+	}
+
+	public void setoBalance(String oBalance) {
+		this.oBalance = oBalance;
+	}
+
+	public String getoBalanceType() {
+		return oBalanceType;
+	}
+
+	public void setoBalanceType(String oBalanceType) {
+		this.oBalanceType = oBalanceType;
+	}
+
+	public String getSecAmount() {
+		return secAmount;
+	}
+
+	public void setSecAmount(String secAmount) {
+		this.secAmount = secAmount;
+	}
+
+	public String getIntersetStartDate() {
+		return intersetStartDate;
+	}
+
+	public void setIntersetStartDate(String intersetStartDate) {
+		this.intersetStartDate = intersetStartDate;
 	}
 
 }

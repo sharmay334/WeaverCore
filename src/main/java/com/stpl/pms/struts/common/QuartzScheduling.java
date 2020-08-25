@@ -13,6 +13,7 @@ public class QuartzScheduling implements Job {
 		System.out.println("Struts 2.3.4 + Quartz 2.1.5 Tax Calculation");
 		
 		calculateTax();
+		scheduleEmployeeAttendance();
 		
 	}
 	
@@ -21,8 +22,19 @@ public class QuartzScheduling implements Job {
 			GameLobbyController controller = new GameLobbyController();
 			controller.calculateTaxOnDebitBalanceOnly();
 			controller.calculateTaxOnCreditBalanceOnly();
-			controller.calculateTaxOnAdvanceBalanceOnly();
-			
+			//controller.calculateTaxOnAdvanceBalanceOnly();
+			controller.calculateOverDueAmountInterest();
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+		return true;
+		
+	}
+	private boolean scheduleEmployeeAttendance() {
+		try {
+			GameLobbyController controller = new GameLobbyController();
+				controller.scheduleEmployeeAttendance();
 		}catch(Exception e) {
 			e.printStackTrace();
 		}

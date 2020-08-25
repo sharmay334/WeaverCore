@@ -129,7 +129,7 @@ public class SendSMS extends Thread {
 	}
 	public void sendSMSAlert(String user,String pass,String mobile,String smsId,String sms,String flash,String smsId1) {
 		
-		String urlHeader = "user=Gir2020&password=Aj321!@%23&msisdn="+mobile+"&sid=GKWOTP&msg="+sms+"&fl=0&gwid=2";
+		String urlHeader = "user=Gir2020&password=Gir2020&msisdn="+mobile+"&sid=SMSJSC&msg="+sms+"&fl=0&gwid=2";
 		OkHttpClient client = new OkHttpClient().newBuilder()
 				  .build();
 				Request request = new Request.Builder()
