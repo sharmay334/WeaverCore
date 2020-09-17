@@ -24,6 +24,8 @@ public class QuartzScheduling implements Job {
 			controller.calculateTaxOnCreditBalanceOnly();
 			//controller.calculateTaxOnAdvanceBalanceOnly();
 			controller.calculateOverDueAmountInterest();
+			
+			//controller.calculateAddInterestAmtOnCurrentBalance();
 		}catch(Exception e) {
 			e.printStackTrace();
 		}

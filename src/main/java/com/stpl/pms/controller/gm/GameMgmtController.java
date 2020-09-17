@@ -1,10 +1,13 @@
 package com.stpl.pms.controller.gm;
 
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import javax.servlet.ServletContext;
 
@@ -224,58 +227,276 @@ public class GameMgmtController {
 		return null;
 	}
 
-	public UserDetailsBean getParentUserData(String userName,UserDetailsBean userDetailsBean) {
+	public UserDetailsBean getParentUserData(String userName, UserDetailsBean userDetailsBean) {
 		// TODO Auto-generated method stub
-		try{
-			// code to set phone number to bomaster phone number only ---rest user information remains same
-			int parentUserId=0;
+		try {
+			// code to set phone number to bomaster phone number only ---rest user
+			// information remains same
+			int parentUserId = 0;
 			Session session = HibernateSessionFactory.getSession();
-			UserDetailsBean userDetailsBean2 = new UserDetailsBean(); 
+			UserDetailsBean userDetailsBean2 = new UserDetailsBean();
 			userDetailsBean2 = userDetailsBean;
 			Criteria criteria = session.createCriteria(StRmBoUserMaster.class);
-			criteria.add(Restrictions.eq("userName",userName));
+			criteria.add(Restrictions.eq("userName", userName));
 			List<StRmBoUserMaster> parentUserIdResult = criteria.list();
-			if(parentUserIdResult!=null){
-				for(StRmBoUserMaster obj:parentUserIdResult){
+			if (parentUserIdResult != null) {
+				for (StRmBoUserMaster obj : parentUserIdResult) {
 					parentUserId = obj.getParentUserId();
 				}
 				Criteria criteria2 = session.createCriteria(StRmBoUserInfo.class);
 				criteria2.add(Restrictions.eq("userId", parentUserId));
 				List<StRmBoUserInfo> beanResult = criteria2.list();
-				if(beanResult!=null){
-					for(StRmBoUserInfo obj:beanResult){
+				if (beanResult != null) {
+					for (StRmBoUserInfo obj : beanResult) {
 						userDetailsBean2.setPhoneNbr(obj.getPhoneNum());
 						userDetailsBean2.setEmailId(obj.getEmailId());
 					}
 					return userDetailsBean2;
 				}
 			}
-			
-		}catch (Exception e) {
+
+		} catch (Exception e) {
 			e.printStackTrace();
 			// TODO: handle exception
 		}
 		return null;
 	}
 
-	public Map<String,byte[]> getAllImages(int gameNo, int batchNo) throws Exception {
+	public Map<String, byte[]> getAllImages(int gameNo, int batchNo) throws Exception {
 		// TODO Auto-generated method stub
-		Map<String,byte[]> images = new HashMap<>();
+		Map<String, byte[]> images = new HashMap<>();
 		Session session = HibernateSessionFactory.getSession();
 		Criteria criteria = session.createCriteria(Itgs.class);
 		criteria.add(Restrictions.eq("game_No", gameNo));
 		criteria.add(Restrictions.eq("batch_no", batchNo));
 		List<Itgs> result = criteria.list();
-		if(result!=null) {
-			for(Itgs obj:result) {
-				images.put("frontImg_"+gameNo+"_"+batchNo, obj.getFront_img());
-				images.put("backImg_"+gameNo+"_"+batchNo, obj.getBack_img());
-				images.put("scratchedImg_"+gameNo+"_"+batchNo, obj.getScratched_img());
-				
+		if (result != null) {
+			for (Itgs obj : result) {
+				images.put("frontImg_" + gameNo + "_" + batchNo, obj.getFront_img());
+				images.put("backImg_" + gameNo + "_" + batchNo, obj.getBack_img());
+				images.put("scratchedImg_" + gameNo + "_" + batchNo, obj.getScratched_img());
+
 			}
 			return images;
 		}
 		return null;
 	}
 
+	public Map<Integer, Integer> getSaleReportByStoredProc() {
+		// TODO Auto-generated method stub
+		Map<Integer, Integer> map = null;
+		try {
+			map = new TreeMap<Integer, Integer>();
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query = session.createSQLQuery("CALL GET_TRANSACTION_REPORT_SALE('" + yearInString + "')");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+
+				for (Object[] obj : result) {
+					map.put((int) obj[0],((BigInteger) obj[1]).intValue());
+
+				}
+				for (int i = 1; i < 13; i++) {
+					if (map.get(i) == null)
+						map.put(i, 0);
+				}
+			} else {
+
+				for (int i = 1; i < 13; i++) {
+					map.put(i, 0);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+
+	public Map<Integer, Integer> getPurchaseReportByStoredProc() {
+		// TODO Auto-generated method stub
+		Map<Integer, Integer> map = null;
+		try {
+			map = new TreeMap<Integer, Integer>();
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query = session.createSQLQuery("CALL GET_TRANSACTION_REPORT_PURCHASE('" + yearInString + "')");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+
+				for (Object[] obj : result) {
+					map.put((int) obj[0],((BigInteger) obj[1]).intValue());
+
+				}
+				for (int i = 1; i < 13; i++) {
+					if (map.get(i) == null)
+						map.put(i, 0);
+				}
+			} else {
+
+				for (int i = 1; i < 13; i++) {
+					map.put(i, 0);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+	public Map<Integer, Integer> getCNReportByStoredProc() {
+		// TODO Auto-generated method stub
+		Map<Integer, Integer> map = null;
+		try {
+			map = new TreeMap<Integer, Integer>();
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query = session.createSQLQuery("CALL GET_TRANSACTION_REPORT_CN('" + yearInString + "')");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+
+				for (Object[] obj : result) {
+					map.put((int) obj[0],((BigInteger) obj[1]).intValue());
+
+				}
+				for (int i = 1; i < 13; i++) {
+					if (map.get(i) == null)
+						map.put(i, 0);
+				}
+			} else {
+
+				for (int i = 1; i < 13; i++) {
+					map.put(i, 0);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+	public Map<Integer, Integer> getDNReportByStoredProc() {
+		// TODO Auto-generated method stub
+		Map<Integer, Integer> map = null;
+		try {
+			map = new TreeMap<Integer, Integer>();
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query = session.createSQLQuery("CALL GET_TRANSACTION_REPORT_DN('" + yearInString + "')");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+
+				for (Object[] obj : result) {
+					map.put((int) obj[0],((BigInteger) obj[1]).intValue());
+
+				}
+				for (int i = 1; i < 13; i++) {
+					if (map.get(i) == null)
+						map.put(i, 0);
+				}
+			} else {
+
+				for (int i = 1; i < 13; i++) {
+					map.put(i, 0);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+
+	public Map<Integer, Integer> getSalePendingBillsStoredProc() {
+		// TODO Auto-generated method stub
+		Map<Integer, Integer> map = null;
+		try {
+			map = new TreeMap<Integer, Integer>();
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query = session.createSQLQuery("CALL GET_PENDING_BILLS_REPORT_SALE('" + yearInString + "')");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+
+				for (Object[] obj : result) {
+					map.put((int) obj[0],((BigInteger) obj[1]).intValue());
+
+				}
+				for (int i = 1; i < 13; i++) {
+					if (map.get(i) == null)
+						map.put(i, 0);
+				}
+			} else {
+
+				for (int i = 1; i < 13; i++) {
+					map.put(i, 0);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+
+	public String getTotalSaleAmount() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query =session.createSQLQuery("CALL GET_SALE_AMOUNT_REPORT_PIE_CHART('"+yearInString+"')");
+			List<Double> result = query.list();
+			if(result!=null && !result.isEmpty() && result.size()>0) {
+				
+				return String.valueOf(result.get(0));
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
+	public String getTotalReceiptAmount() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query =session.createSQLQuery("CALL GET_RECEIPT_AMOUNT_REPORT_PIE_CHART('"+yearInString+"')");
+			List<Double> result = query.list();
+			if(result!=null && !result.isEmpty() && result.size()>0) {
+				
+				return String.valueOf(result.get(0));
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
+	public String getTotalCNAmount() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Calendar now = Calendar.getInstance();
+			int year = now.get(Calendar.YEAR);
+			String yearInString = String.valueOf(year);
+			SQLQuery query =session.createSQLQuery("CALL GET_CN_AMOUNT_REPORT_PIE_CHART('"+yearInString+"')");
+			List<Double> result = query.list();
+			if(result!=null && !result.isEmpty() && result.size()>0) {
+				
+				return String.valueOf(result.get(0));
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
 }

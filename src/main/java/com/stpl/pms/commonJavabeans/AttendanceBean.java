@@ -17,6 +17,7 @@ public class AttendanceBean {
 	private String totalReading;
 	private String leaveReason;
 	private String workingHour;
+	private String visitLocation;
 
 	public String getCompanyName() {
 		return companyName;
@@ -136,6 +137,14 @@ public class AttendanceBean {
 
 	public void setWorkingHour(String workingHour) {
 		this.workingHour = workingHour;
+	}
+
+	public String getVisitLocation() {
+		return visitLocation;
+	}
+
+	public void setVisitLocation(String visitLocation) {
+		this.visitLocation = visitLocation;
 	}
 
 }

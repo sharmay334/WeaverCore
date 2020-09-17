@@ -20,6 +20,8 @@ public class BillsBean {
 	private String billDueDate;
 	private String subLedger; // in txn reporting this fields denotes sales ledger / purchase ledger tab in txn
 	private String txnType;
+	private String empName;
+	private String dueDays;
 	
 	public String getBillVoucherNo() {
 		return billVoucherNo;
@@ -163,6 +165,22 @@ public class BillsBean {
 
 	public void setTxnType(String txnType) {
 		this.txnType = txnType;
+	}
+
+	public String getEmpName() {
+		return empName;
+	}
+
+	public void setEmpName(String empName) {
+		this.empName = empName;
+	}
+
+	public String getDueDays() {
+		return dueDays;
+	}
+
+	public void setDueDays(String dueDays) {
+		this.dueDays = dueDays;
 	}
 
 }

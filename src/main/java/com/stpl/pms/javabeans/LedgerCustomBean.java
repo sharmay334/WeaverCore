@@ -19,7 +19,12 @@ public class LedgerCustomBean {
 	private String oBalanceType;
 	private String secAmount;
 	private String intersetStartDate;
-	
+	private String address;
+	private String resPerAddr;
+	private String district;
+	private String tehsil;
+	private String pincode;
+
 	public int getLedgerId() {
 		return ledgerId;
 	}
@@ -100,7 +105,6 @@ public class LedgerCustomBean {
 		this.creditLimitEligible = creditLimitEligible;
 	}
 
-
 	public String getPropName() {
 		return propName;
 	}
@@ -155,6 +159,46 @@ public class LedgerCustomBean {
 
 	public void setIntersetStartDate(String intersetStartDate) {
 		this.intersetStartDate = intersetStartDate;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public void setAddress(String address) {
+		this.address = address;
+	}
+
+	public String getResPerAddr() {
+		return resPerAddr;
+	}
+
+	public void setResPerAddr(String resPerAddr) {
+		this.resPerAddr = resPerAddr;
+	}
+
+	public String getDistrict() {
+		return district;
+	}
+
+	public void setDistrict(String district) {
+		this.district = district;
+	}
+
+	public String getTehsil() {
+		return tehsil;
+	}
+
+	public void setTehsil(String tehsil) {
+		this.tehsil = tehsil;
+	}
+
+	public String getPincode() {
+		return pincode;
+	}
+
+	public void setPincode(String pincode) {
+		this.pincode = pincode;
 	}
 
 }

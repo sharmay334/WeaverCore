@@ -214,11 +214,42 @@ public class SendSMS extends Thread {
 		/*sendSMS((short)1,"7891615021","Testing unicel sms service","unicel");
 		*/
 		String deliveryMessage = "Message Sent Successfully";
+		testSMS();
 		if(deliveryMessage.toLowerCase().contains("success")){
 			System.out.println("soem");
 
 		}
 
+	}
+	public static void testSMS() {
+		
+		String urlHeader = "https://masterdev-epns-eu1.api.vodafone.com/vbps/dxl/documentManagement/v1/document?id=1&accountId=1";
+		OkHttpClient client = new OkHttpClient().newBuilder()
+				  .build();
+				Request request = new Request.Builder()
+				  .url("https://masterdev-epns-eu1.api.vodafone.com/vbps/dxl/documentManagement/v1/document?id=1&accountId=1")
+				  .method("GET", null)
+				  .build();
+				
+				System.setProperty("javax.net.ssl.keyStore", "/home/yash/Desktop/start_sirioninc_net_public.pem/keystore.jks");
+
+				System.setProperty("javax.net.ssl.keyStorePassword", "vodafone");
+				System.setProperty("javax.net.ssl.keyStoreType", "JKS");    
+				
+						System.setProperty("https.protocols", "TLSv1.2,TLSv1.1,SSLv3");
+				
+				Response response = null;
+				try {
+					response = client.newCall(request).execute();
+					
+					System.out.println(response);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+				e.printStackTrace();
+				}
+				finally {
+					response.close();
+				}
 	}
 	
 	public  static void sendSMS(Short aliasId,String mobileNo,String msg, String provider) {

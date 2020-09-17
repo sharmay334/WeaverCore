@@ -767,7 +767,7 @@ public class UserMgmtDaoImpl {
 			if (type.equals("Role Head")) {
 				criteria.add(Restrictions.eq("isRoleHead", "Y"));
 			} else if (type.equals("Sub Users")) {
-				criteria.add(Restrictions.eq("isRoleHead", "N"));
+				criteria.add(Restrictions.eq("isRoleHead", "Y"));
 			}
 		}
 
@@ -777,7 +777,6 @@ public class UserMgmtDaoImpl {
 				criteria.add(Restrictions.eq("status", status));
 		}
 
-		criteria.add(Restrictions.eq("parentUserId", parentUserBean.getUserId()));
 		criteria.createAlias("stRmBoRoleMaster", "roleMaster");
 		criteria.add(Restrictions.eq("roleMaster.tier", parentUserBean.getUserType()));
 		// criteria.addOrder(Order.asc("userInfo.firstName"));

@@ -41,6 +41,7 @@ import com.stpl.pms.commonJavabeans.AttendanceBean;
 import com.stpl.pms.commonJavabeans.BillsBean;
 import com.stpl.pms.commonJavabeans.EmployeeExpenseBean;
 import com.stpl.pms.commonJavabeans.ExpenseBean;
+import com.stpl.pms.commonJavabeans.LedgerReportBean;
 import com.stpl.pms.commonJavabeans.LedgerSecondStepBean;
 import com.stpl.pms.commonJavabeans.ReceiptSaleBillMapping;
 import com.stpl.pms.commonJavabeans.SaleBillsBean;
@@ -2359,13 +2360,17 @@ public class GameLobbyController {
 	public boolean createTransactionPayment(String account, String employeeUnder, String currBalance,
 			String particulars, String amount, String bankName, String txnType, String narration, String currentblnc,
 			String hiddenTypeOfRef, String hiddenBillWiseName, String hiddenAmnt, String hiddenBilId,
-			String activeVoucherNumber, String paymentDate, String paymentNoVoucher) {
+			String activeVoucherNumber, String paymentDate, String paymentNoVoucher, Session session,
+			Transaction transaction, String accountOldBal, String particularsOldBal) {
 		// TODO Auto-generated method stubp
-		Transaction transaction = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
-			transaction = session.beginTransaction();
 			int empId = getEmployeeId(employeeUnder);
+			LocalDate date1 = LocalDate.now();
+			DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date1.format(formatter1);
+			if (paymentDate == null || paymentDate.isEmpty()) {
+				paymentDate = currentDate;
+			}
 			String sqlString = "INSERT INTO st_rm_txn_payment_master(`account`,`empId`,`currentBalance`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`,`finalBalance`,`voucher_numbering`,`under_vcr_id`,`paymentDate`) values('"
 					+ account + "'," + empId + ",'" + currBalance + "','" + particulars + "','" + amount + "','"
 					+ txnType + "','" + bankName + "','" + narration + "'," + currBalance + ",'" + paymentNoVoucher
@@ -2463,7 +2468,83 @@ public class GameLobbyController {
 				}
 
 			}
-			transaction.commit();
+			int partyId = getLedgerIdByName(account);
+			String[] accountOldBalArr = accountOldBal.split(" ");
+			String balnType = accountOldBalArr[1];
+			Double bankCashAmt = 0.0;
+			Double receiptAmt = 0.0;
+			for (int i = 0; i < amountArr.length; i++) {
+				if (amountArr[i] != null && !amountArr[i].trim().isEmpty() && !amountArr[i].contains("-1")
+						&& !amountArr[i].trim().equals(""))
+					bankCashAmt = bankCashAmt + Double.valueOf(amountArr[i].trim());
+			}
+			receiptAmt = bankCashAmt;
+			if (balnType.equals("Cr")) {
+				bankCashAmt = bankCashAmt + Double.valueOf(accountOldBalArr[0].trim());
+				balnType = "Cr";
+			} else {
+
+				bankCashAmt = Double.valueOf(accountOldBalArr[0].trim()) - bankCashAmt;
+				if (bankCashAmt < 0) {
+					bankCashAmt = bankCashAmt * (-1);
+					balnType = "Cr";
+				} else {
+					balnType = "Dr";
+				}
+
+			}
+			String bankCashAmtFinal = bankCashAmt + " " + balnType;
+			String sqlStr = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+					+ partyId + ",'" + accountOldBal + "','" + bankCashAmtFinal + "','" + paymentDate + "','PAYMENT','"
+					+ paymentNoVoucher + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlStr);
+			query2.executeUpdate();
+
+			String particularsOldBalArr[] = particularsOldBal.split(",");
+			for (int i = 0; i < particularArr.length; i++) {
+
+				if (particularArr[i] != null && !particularArr[i].isEmpty() && !particularArr[i].contains("-1")
+						&& !particularArr[i].contains("none")) {
+
+					int pId = getLedgerIdByName(particularArr[i].trim());
+					String partyType = getPartyTypeById(pId);
+					String particularArrArr[] = particularsOldBalArr[i].trim().split(" ");
+					String parBalTyp = particularArrArr[1].trim();
+					Double blncAftr = 0.0;
+					if (parBalTyp.equalsIgnoreCase("Cr") && partyType.equalsIgnoreCase("Sundry debtors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) - receiptAmt;
+
+						if (blncAftr < 0) {
+							blncAftr = blncAftr * (-1);
+							parBalTyp = "Dr";
+						} else {
+							parBalTyp = "Cr";
+						}
+					} else if (parBalTyp.equalsIgnoreCase("Dr") && partyType.equalsIgnoreCase("Sundry debtors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) + receiptAmt;
+						parBalTyp = "Dr";
+
+					} else if (parBalTyp.equalsIgnoreCase("Cr") && partyType.equalsIgnoreCase("Sundry creditors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) - receiptAmt;
+
+						if (blncAftr < 0) {
+							blncAftr = blncAftr * (-1);
+							parBalTyp = "Dr";
+						} else {
+							parBalTyp = "Cr";
+						}
+					} else if (parBalTyp.equalsIgnoreCase("Dr") && partyType.equalsIgnoreCase("Sundry creditors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) + receiptAmt;
+						parBalTyp = "Dr";
+					}
+					String aftrFinalBal = blncAftr + " " + parBalTyp;
+					sqlStr = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+							+ pId + ",'" + particularsOldBalArr[i].trim() + "','" + aftrFinalBal + "','" + paymentDate
+							+ "','PAYMENT','" + paymentNoVoucher + "')";
+					SQLQuery query3 = session.createSQLQuery(sqlStr);
+					query3.executeUpdate();
+				}
+			}
 			return true;
 		} catch (Exception e) {
 			transaction.rollback();
@@ -2472,18 +2553,34 @@ public class GameLobbyController {
 		return false;
 	}
 
-	public boolean createTransactionPaymentEmp(String account, String particulars, String amount, String bankName,
-			String txnType, String narration, int user_id, int parent_id) {
+	public boolean createTransactionPaymentEmp(String account, String particulars, String amount, String totAmt,
+			String bankName, String txnType, String narration, int user_id, int parent_id) {
 		// TODO Auto-generated method stubp
+		Transaction transaction = null;
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			String sqlString = "INSERT INTO st_rm_txn_payment_master_emp(`parent_id`,`emp_id`,`account`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`) values('"
+			transaction = session.beginTransaction();
+			Date today = new Date();
+			DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+			df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+			String date = df.format(today);
+			String sqlString = "INSERT INTO st_rm_txn_payment_master_emp(`parent_id`,`emp_id`,`account`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`,`finalBalance`,`payment_date`) values('"
 					+ parent_id + "','" + user_id + "','" + account + "','" + particulars + "','" + amount + "','"
-					+ txnType + "','" + bankName + "','" + narration + "')";
+					+ txnType + "','" + bankName + "','" + narration + "','" + totAmt + "','" + date + "')";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
+
+			sqlString = "SELECT max(paymentId) from st_rm_txn_payment_master_emp WHERE emp_id=" + user_id;
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			List<Integer> pId = query2.list();
+			sqlString = "INSERT INTO payment_order_staus_alert(`emp_id`,`order_id`,`status`,`changed_by`) values("
+					+ user_id + ",'" + pId.get(0) + "','pending'," + parent_id + ")";
+			SQLQuery query3 = session.createSQLQuery(sqlString);
+			query3.executeUpdate();
+			transaction.commit();
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -2545,6 +2642,24 @@ public class GameLobbyController {
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			String sqlString = "Select max(paymentId) from st_rm_txn_payment_master";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List id = query.list();
+			if (id != null || !id.isEmpty()) {
+				int myId = (int) id.get(0);
+				myId += 1;
+				return myId;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 1;
+	}
+
+	public int getEmpPaymentNo() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "Select max(paymentId) from st_rm_txn_payment_master_emp";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			List id = query.list();
 			if (id != null || !id.isEmpty()) {
@@ -2653,17 +2768,21 @@ public class GameLobbyController {
 			String particulars, String amount, String bankName, String txnType, String narration, String currentblnc,
 			String hiddenTypeOfRef, String hiddenBillWiseName, String hiddenAmnt, String hiddenBilId,
 			String receiptNoVoucher, String txn_dd_chq_no, String txn_bnkNm, String activeVoucherNumber,
-			String paymentDate, String particularsBlncType) {
+			String paymentDate, String particularsBlncType, Session session, Transaction transaction,
+			String accountOldBal, String particularsOldBal,String totalAmt) {
 		// TODO Auto-generated method stub
-		Transaction transaction = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
-			transaction = session.beginTransaction();
 			int empId = getEmployeeId(employeeUnder);
-			String sqlString = "INSERT INTO st_rm_txn_receipt_master(`account`,`empId`,`currentBalance`,`Particulars`,`amount`,`txnType`,`bank_name`,`txn_dd_cheq_no`,`txn_bank_name`,`narration`,`finalBalance`,`voucher_numbering`,`receipt_date`,`under_vcr_id`) values('"
+			LocalDate date1 = LocalDate.now();
+			DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date1.format(formatter1);
+			if (paymentDate == null || paymentDate.isEmpty()) {
+				paymentDate = currentDate;
+			}
+			String sqlString = "INSERT INTO st_rm_txn_receipt_master(`account`,`empId`,`currentBalance`,`Particulars`,`amount`,`txnType`,`bank_name`,`txn_dd_cheq_no`,`txn_bank_name`,`narration`,`totAmt`,`voucher_numbering`,`receipt_date`,`under_vcr_id`) values('"
 					+ account + "'," + empId + ",'" + currBalance + "','" + particulars + "','" + amount + "','"
 					+ txnType + "','" + bankName + "','" + txn_dd_chq_no + "','" + txn_bnkNm + "','" + narration + "',"
-					+ currBalance + ",'" + receiptNoVoucher + "','" + paymentDate + "'," + activeVoucherNumber + ")";
+					+ totalAmt + ",'" + receiptNoVoucher + "','" + paymentDate + "'," + activeVoucherNumber + ")";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
 			String particularArr[] = particulars.split(",");
@@ -2770,7 +2889,83 @@ public class GameLobbyController {
 				}
 
 			}
-			transaction.commit();
+			int partyId = getLedgerIdByName(account);
+			String[] accountOldBalArr = accountOldBal.split(" ");
+			String balnType = accountOldBalArr[1];
+			Double bankCashAmt = 0.0;
+			Double receiptAmt = 0.0;
+			for (int i = 0; i < amountArr.length; i++) {
+				if (amountArr[i] != null && !amountArr[i].trim().isEmpty() && !amountArr[i].contains("-1")
+						&& !amountArr[i].trim().equals(""))
+					bankCashAmt = bankCashAmt + Double.valueOf(amountArr[i].trim());
+			}
+			receiptAmt = bankCashAmt;
+			if (balnType.equals("Dr")) {
+				bankCashAmt = bankCashAmt + Double.valueOf(accountOldBalArr[0].trim());
+				balnType = "Dr";
+			} else {
+
+				bankCashAmt = Double.valueOf(accountOldBalArr[0].trim()) - bankCashAmt;
+				if (bankCashAmt < 0) {
+					bankCashAmt = bankCashAmt * (-1);
+					balnType = "Dr";
+				} else {
+					balnType = "Cr";
+				}
+
+			}
+			String bankCashAmtFinal = bankCashAmt + " " + balnType;
+			String sqlStr = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+					+ partyId + ",'" + accountOldBal + "','" + bankCashAmtFinal + "','" + paymentDate + "','RECEIPT','"
+					+ receiptNoVoucher + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlStr);
+			query2.executeUpdate();
+
+			String particularsOldBalArr[] = particularsOldBal.split(",");
+			for (int i = 0; i < particularArr.length; i++) {
+
+				if (particularArr[i] != null && !particularArr[i].isEmpty() && !particularArr[i].contains("-1")
+						&& !particularArr[i].contains("none")) {
+
+					int pId = getLedgerIdByName(particularArr[i].trim());
+					String partyType = getPartyTypeById(pId);
+					String particularArrArr[] = particularsOldBalArr[i].trim().split(" ");
+					String parBalTyp = particularArrArr[1].trim();
+					Double blncAftr = 0.0;
+					if (parBalTyp.equalsIgnoreCase("Dr") && partyType.equalsIgnoreCase("Sundry debtors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) - receiptAmt;
+
+						if (blncAftr < 0) {
+							blncAftr = blncAftr * (-1);
+							parBalTyp = "Cr";
+						} else {
+							parBalTyp = "Dr";
+						}
+					} else if (parBalTyp.equalsIgnoreCase("Cr") && partyType.equalsIgnoreCase("Sundry debtors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) + receiptAmt;
+						parBalTyp = "Cr";
+
+					} else if (parBalTyp.equalsIgnoreCase("Dr") && partyType.equalsIgnoreCase("Sundry creditors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) - receiptAmt;
+
+						if (blncAftr < 0) {
+							blncAftr = blncAftr * (-1);
+							parBalTyp = "Cr";
+						} else {
+							parBalTyp = "Dr";
+						}
+					} else if (parBalTyp.equalsIgnoreCase("Cr") && partyType.equalsIgnoreCase("Sundry creditors")) {
+						blncAftr = Double.valueOf(particularArrArr[0].trim()) + receiptAmt;
+						parBalTyp = "Cr";
+					}
+					String aftrFinalBal = blncAftr + " " + parBalTyp;
+					sqlStr = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+							+ pId + ",'" + particularsOldBalArr[i].trim() + "','" + aftrFinalBal + "','" + paymentDate
+							+ "','RECEIPT','" + receiptNoVoucher + "')";
+					SQLQuery query3 = session.createSQLQuery(sqlStr);
+					query3.executeUpdate();
+				}
+			}
 			return true;
 		} catch (Exception e) {
 			transaction.rollback();
@@ -2798,21 +2993,233 @@ public class GameLobbyController {
 	}
 
 	public boolean createTransactionJournal(String employeeUnder, String particulars, String cr_dr, String debitAmt,
-			String creditAmt, String narration, String journalNoVoucher, String paymentDate,
-			String activeVoucherNumber) {
+			String creditAmt, String narration, String journalNoVoucher, String paymentDate, String activeVoucherNumber,
+			Session session, Transaction transaction, String partyOldBal) {
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			int empId = getEmployeeId(employeeUnder);
+			LocalDate date1 = LocalDate.now();
+			DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date1.format(formatter1);
+			if (paymentDate == null || paymentDate.isEmpty()) {
+				paymentDate = currentDate;
+			}
 			String sqlString = "INSERT INTO st_rm_txn_journal_master(`empId`,`Dr_Cr`,`particulars`,`debitAmt`,`creditAmt`,`narration`,`voucher_numbering`,`journal_date`,`under_vcr_id`) values("
 					+ empId + ",'" + cr_dr + "','" + particulars + "','" + debitAmt + "','" + creditAmt + "','"
 					+ narration + "','" + journalNoVoucher + "','" + paymentDate + "'," + activeVoucherNumber + ")";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
+			String particularsArr[] = particulars.split(",");
+			String partyOldBalArr[] = partyOldBal.split(",");
+			String cr_drArr[] = cr_dr.split(",");
+			String debitAmtArr[] = debitAmt.split(",");
+			String creditAmtArr[] = creditAmt.split(",");
+			for (int i = 0; i < particularsArr.length; i++) {
+
+				if (particularsArr[i] != null && !particularsArr[i].trim().isEmpty()) {
+
+					int partyId = getLedgerIdByName(particularsArr[i].trim());
+					String partyType = getPartyTypeById(partyId);
+					String txnTyp = cr_drArr[i].trim();
+					String oldBalType = partyOldBalArr[i].split(" ")[1].trim();
+					Double amount = 0.0;
+					String finalBalType = "";
+					String POBA = "";
+					if (i == 0)
+						POBA = partyOldBalArr[i].split(" ")[0].trim();
+					else
+						POBA = partyOldBalArr[i].split(" ")[1].trim();
+					if (cr_drArr[i].trim().equals("Dr") && partyType.equals("Sundry debtors")) {
+						if (oldBalType.equals("Dr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(debitAmtArr[i].trim());
+							finalBalType = "Dr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(debitAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Dr";
+							}
+							finalBalType = "Cr";
+
+						}
+
+					} else if (cr_drArr[i].trim().equals("Cr") && partyType.equals("Sundry debtors")) {
+						if (oldBalType.equals("Cr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(creditAmtArr[i].trim());
+							finalBalType = "Cr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(creditAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Cr";
+							}
+							finalBalType = "Dr";
+
+						}
+
+					}
+
+					else if (cr_drArr[i].trim().equals("Dr") && partyType.equals("Sundry creditors")) {
+						if (oldBalType.equals("Dr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(debitAmtArr[i].trim());
+							finalBalType = "Dr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(debitAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Dr";
+							}
+							finalBalType = "Cr";
+
+						}
+
+					} else if (cr_drArr[i].trim().equals("Cr") && partyType.equals("Sundry creditors")) {
+						if (oldBalType.equals("Cr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(creditAmtArr[i].trim());
+							finalBalType = "Cr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(creditAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Cr";
+							}
+							finalBalType = "Dr";
+
+						}
+
+					} else if (cr_drArr[i].trim().equals("Dr") && partyType.equals("Expense(direct)")) {
+						if (oldBalType.equals("Dr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(debitAmtArr[i].trim());
+							finalBalType = "Dr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(debitAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Dr";
+							}
+							finalBalType = "Cr";
+
+						}
+
+					} else if (cr_drArr[i].trim().equals("Cr") && partyType.equals("Expense(direct)")) {
+						if (oldBalType.equals("Cr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(creditAmtArr[i].trim());
+							finalBalType = "Cr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(creditAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Cr";
+							}
+							finalBalType = "Dr";
+
+						}
+
+					}
+
+					else if (cr_drArr[i].trim().equals("Dr") && partyType.equals("Expense(indirect)")) {
+						if (oldBalType.equals("Dr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(debitAmtArr[i].trim());
+							finalBalType = "Dr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(debitAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Dr";
+							}
+							finalBalType = "Cr";
+
+						}
+
+					} else if (cr_drArr[i].trim().equals("Cr") && partyType.equals("Expense(indirect)")) {
+						if (oldBalType.equals("Cr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(creditAmtArr[i].trim());
+							finalBalType = "Cr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(creditAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Cr";
+							}
+							finalBalType = "Dr";
+
+						}
+
+					}
+
+					else if (cr_drArr[i].trim().equals("Dr") && partyType.equals("Income(indirect)")) {
+						if (oldBalType.equals("Dr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(debitAmtArr[i].trim());
+							finalBalType = "Dr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(debitAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Dr";
+							}
+							finalBalType = "Cr";
+
+						}
+
+					} else if (cr_drArr[i].trim().equals("Cr") && partyType.equals("Income(indirect)")) {
+						if (oldBalType.equals("Cr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(creditAmtArr[i].trim());
+							finalBalType = "Cr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(creditAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Cr";
+							}
+							finalBalType = "Dr";
+
+						}
+
+					}
+
+					else if (cr_drArr[i].trim().equals("Dr") && partyType.equals("Income(direct)")) {
+						if (oldBalType.equals("Dr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(debitAmtArr[i].trim());
+							finalBalType = "Dr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(debitAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Dr";
+							}
+							finalBalType = "Cr";
+
+						}
+
+					} else if (cr_drArr[i].trim().equals("Cr") && partyType.equals("Income(direct)")) {
+						if (oldBalType.equals("Cr")) {
+							amount = Double.valueOf(POBA) + Double.valueOf(debitAmtArr[i].trim());
+							finalBalType = "Cr";
+						} else {
+							amount = Double.valueOf(POBA) - Double.valueOf(debitAmtArr[i].trim());
+							if (amount < 0) {
+								amount = amount * (-1);
+								finalBalType = "Cr";
+							}
+							finalBalType = "Dr";
+
+						}
+
+					}
+					String finalBal = amount + " " + finalBalType;
+					String sqlStr = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+							+ partyId + ",'" + partyOldBalArr[i].trim() + "','" + finalBal + "','" + paymentDate
+							+ "','JOURNAL','" + journalNoVoucher + "')";
+					SQLQuery query3 = session.createSQLQuery(sqlStr);
+					query3.executeUpdate();
+
+				}
+			}
 
 			return true;
 
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -2858,17 +3265,16 @@ public class GameLobbyController {
 		return response;
 	}
 
-	public boolean createTransactionSales(String referenceNo, String employeeUnder, String partyAcc,
+	public boolean createTransactionSales(String partyOldBalance, String employeeUnder, String partyAcc,
 			String salesAccount, String salesStockItems, String amount, String qty, String rate, String narration,
 			String salesNoVoucher, String consignee, String Dname, String propName, String contact, String address,
 			String gstnNo, String ddn, String tn, String des, String billt, String vn, String transportFreight,
-			String saleDate, String activeVoucherNumber, String totalAmt, String godown, String batch) {
+			String saleDate, String activeVoucherNumber, String totalAmt, String godown, String batch, Session session,
+			Transaction transaction) {
 		// TODO Auto-generated method stub
-		Transaction transaction = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			int empId = getEmployeeId(employeeUnder);
-			transaction = session.beginTransaction();
+			int partyId = getLedgerIdByName(partyAcc);
 			String sqlString = "SELECT voucher_numbering from st_rm_txn_sales_master";
 			SQLQuery query1 = session.createSQLQuery(sqlString);
 			List<String> list = query1.list();
@@ -2878,7 +3284,12 @@ public class GameLobbyController {
 					return false;
 				}
 			}
-
+			LocalDate date = LocalDate.now();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date.format(formatter);
+			if (saleDate == null || saleDate.isEmpty()) {
+				saleDate = currentDate;
+			}
 			sqlString = "INSERT INTO st_rm_txn_sales_master(`party_acc_name`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`totalAmt`,`voucher_numbering`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstnNo`,`saleDate`,`dispatch_doc_no`,`tansport_name`,`destination`,`bill_t_no`,`vehicle_no`,`transport_fright`,`under_vcr_id`,`item_godown`,`item_batch`) values('"
 					+ partyAcc + "'," + empId + ",'" + salesAccount + "','" + salesStockItems + "','" + qty + "','"
 					+ rate + "','" + amount + "','" + narration + "','" + totalAmt + "','" + salesNoVoucher + "','"
@@ -2887,7 +3298,27 @@ public class GameLobbyController {
 					+ transportFreight + "'," + activeVoucherNumber + ",'" + godown + "','" + batch + "')";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
-			transaction.commit();
+			String[] balnArr = partyOldBalance.split(" ");
+			Double afterTxnBal = 0.0;
+			String blncType = "";
+			if (balnArr[1].equalsIgnoreCase("Dr")) {
+				afterTxnBal = Double.valueOf(balnArr[0]) + Double.valueOf(totalAmt);
+				blncType = "Dr";
+			} else {
+				afterTxnBal = Double.valueOf(balnArr[0]) - Double.valueOf(totalAmt);
+				if (afterTxnBal < 0) {
+					afterTxnBal = afterTxnBal * (-1);
+					blncType = "Dr";
+				} else
+					blncType = "Cr";
+			}
+			String aftTxn = afterTxnBal + " " + blncType;
+			sqlString = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+					+ partyId + ",'" + partyOldBalance + "','" + aftTxn + "','" + saleDate + "','SALE','"
+					+ salesNoVoucher + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+
 			return true;
 		} catch (Exception e) {
 			transaction.rollback();
@@ -2932,16 +3363,34 @@ public class GameLobbyController {
 		return 1;
 	}
 
-	public boolean createTransactionPurchase(String referenceNo, String employeeUnder, String partyAcc,
+	public boolean createTransactionPurchase(String partyOldBalance, String employeeUnder, String partyAcc,
 			String salesAccount, String salesStockItems, String amount, String qty, String rate, String narration,
 			String purchaseNoVoucher, String consignee, String Dname, String propName, String contact, String address,
 			String gstnNo, String ddn, String tn, String des, String billt, String vn, String transportFreight,
-			String saleDate, String activeVoucherNumber, String totAmt, String godown, String batch) {
+			String saleDate, String activeVoucherNumber, String totAmt, String godown, String batch, Session session,
+			Transaction transaction) {
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			int empId = getEmployeeId(employeeUnder);
-			String sqlString = "INSERT INTO st_rm_txn_purchase_master(`party_acc_name`,`emp_id`,`purchase_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`totalAmt`,`voucher_numbering`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstnNo`,`purchaseDate`,`dispatch_doc_no`,`tansport_name`,`destination`,`bill_t_no`,`vehicle_no`,`transport_fright`,`under_vcr_id`,`item_godown`,`item_batch`) values('"
+			int partyId = getLedgerIdByName(partyAcc);
+
+			String sqlString = "SELECT voucher_numbering from st_rm_txn_purchase_master";
+			SQLQuery query1 = session.createSQLQuery(sqlString);
+			List<String> list = query1.list();
+			if (list != null && !list.isEmpty()) {
+
+				if (list.contains(purchaseNoVoucher)) {
+					return false;
+				}
+			}
+			LocalDate date = LocalDate.now();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date.format(formatter);
+			if (saleDate == null || saleDate.isEmpty()) {
+				saleDate = currentDate;
+			}
+
+			sqlString = "INSERT INTO st_rm_txn_purchase_master(`party_acc_name`,`emp_id`,`purchase_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`totalAmt`,`voucher_numbering`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstnNo`,`purchaseDate`,`dispatch_doc_no`,`tansport_name`,`destination`,`bill_t_no`,`vehicle_no`,`transport_fright`,`under_vcr_id`,`item_godown`,`item_batch`) values('"
 					+ partyAcc + "'," + empId + ",'" + salesAccount + "','" + salesStockItems + "','" + qty + "','"
 					+ rate + "','" + amount + "','" + narration + "','" + totAmt + "','" + purchaseNoVoucher + "','"
 					+ consignee + "','" + Dname + "','" + propName + "','" + contact + "','" + address + "','" + gstnNo
@@ -2949,8 +3398,31 @@ public class GameLobbyController {
 					+ transportFreight + "'," + activeVoucherNumber + ",'" + godown + "','" + batch + "')";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
+
+			String[] balnArr = partyOldBalance.split(" ");
+			Double afterTxnBal = 0.0;
+			String blncType = "";
+			if (balnArr[1].equalsIgnoreCase("Cr")) {
+				afterTxnBal = Double.valueOf(balnArr[0]) + Double.valueOf(totAmt);
+				blncType = "Cr";
+			} else {
+				afterTxnBal = Double.valueOf(balnArr[0]) - Double.valueOf(totAmt);
+				if (afterTxnBal < 0) {
+					afterTxnBal = afterTxnBal * (-1);
+					blncType = "Cr";
+				} else
+					blncType = "Dr";
+			}
+			String aftTxn = afterTxnBal + " " + blncType;
+			sqlString = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+					+ partyId + ",'" + partyOldBalance + "','" + aftTxn + "','" + saleDate + "','PURCHASE','"
+					+ purchaseNoVoucher + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -3026,25 +3498,36 @@ public class GameLobbyController {
 
 	public boolean createEmpTransactionCreditNote(String referenceNo, String employeeUnder, String partyAcc,
 			String salesAccount, String salesStockItems, String amount, String qty, String rate, String narration,
-			int user_id, int parent_id, String totalBalance) {
+			int user_id, int parent_id, String totalBalance, String consignee, String dname, String propName,
+			String contact, String address, String gstnNo, String tn) {
 		// TODO Auto-generated method stub
+		Transaction transaction = null;
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			String sqlString = "INSERT INTO st_rm_txn_creditNote_master_emp(`party_acc_name`,`parent_id`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`reference_no`,`finalBalance`) values('"
+
+			transaction = session.beginTransaction();
+			Date today = new Date();
+			DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+			df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+			String date = df.format(today);
+			String sqlString = "INSERT INTO st_rm_txn_creditNote_master_emp(`party_acc_name`,`parent_id`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`reference_no`,`finalBalance`,`transport_name`,`creditNote_date`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstn_no`) values('"
 					+ partyAcc + "'," + parent_id + "," + user_id + ",'" + salesAccount + "','" + salesStockItems
 					+ "','" + qty + "','" + rate + "','" + amount + "','" + narration + "','" + referenceNo + "','"
-					+ totalBalance + "')";
+					+ totalBalance + "','" + tn + "','" + date + "','" + consignee + "','" + dname + "','" + propName
+					+ "','" + contact + "','" + address + "','" + gstnNo + "')";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
-			int purId = getEmpCreditNoteNo(user_id);
-
-			purId = purId + 1;
-			sqlString = "INSERT INTO bo_um_emp_creditnote_num_master(`emp_id`,`cn_id`) values(" + user_id + "," + purId
-					+ ")";
+			sqlString = "SELECT max(cnId) from st_rm_txn_creditNote_master_emp WHERE emp_id=" + user_id;
 			SQLQuery query2 = session.createSQLQuery(sqlString);
-			query2.executeUpdate();
+			List<Integer> cId = query2.list();
+			sqlString = "INSERT INTO creditNote_order_staus_alert(`emp_id`,`order_id`,`status`,`changed_by`) values("
+					+ user_id + ",'" + cId.get(0) + "','pending'," + parent_id + ")";
+			SQLQuery query3 = session.createSQLQuery(sqlString);
+			query3.executeUpdate();
+			transaction.commit();
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -3220,12 +3703,10 @@ public class GameLobbyController {
 		return "";
 	}
 
-	public boolean updateTransactionPartyBalance(String partyAcc, String currBalance, String hcrdr) {
+	public boolean updateTransactionPartyBalance(String partyAcc, String currBalance, String hcrdr, Session session,
+			Transaction transaction) {
 		// TODO Auto-generated method stub
-		Transaction transaction = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
-			transaction = session.beginTransaction();
 			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			List<Object[]> partyIds = query.list();
@@ -3345,10 +3826,9 @@ public class GameLobbyController {
 
 	public boolean updateOrCreateStock(String salesStockItems, String goDown, String qty, String unit,
 			String hiddenBatchNumber, String hiddenMfgDate, String hiddenExpDate, String hiddenExpAlert,
-			String hiddenExpAlertDate) {
+			String hiddenExpAlertDate, Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			String[] stockItemArray = salesStockItems.split(",");
 			String[] goDownArray = goDown.split(",");
 			String[] qtyArray = qty.split(",");
@@ -3412,6 +3892,7 @@ public class GameLobbyController {
 			}
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -3469,12 +3950,9 @@ public class GameLobbyController {
 
 	public boolean updateOrCreateStockSale(String salesStockItems, String goDown, String qty, String unit,
 			String hiddenBatchNumber, String hiddenMfgDate, String hiddenExpDate, String hiddenExpAlert,
-			String hiddenExpAlertDate, String hiddenBatchApplicable) {
+			String hiddenExpAlertDate, String hiddenBatchApplicable, Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
-		Transaction transaction = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
-			transaction = session.beginTransaction();
 			String[] stockItemArray = salesStockItems.split(",");
 			String[] goDownArray = goDown.split(",");
 			String[] qtyArray = qty.split(",");
@@ -3543,7 +4021,6 @@ public class GameLobbyController {
 
 				}
 			}
-			transaction.commit();
 			return true;
 
 		} catch (Exception e) {
@@ -3845,10 +4322,9 @@ public class GameLobbyController {
 	}
 
 	public boolean insertNewBill(String paymentDate, String string, String partyAcc, String totalAmt,
-			String purchaseNoVoucher) {
+			String purchaseNoVoucher, Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			List<Object[]> partyIds = query.list();
@@ -3863,15 +4339,16 @@ public class GameLobbyController {
 			query2.executeUpdate();
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
 	}
 
-	public boolean insertNewBillSale(String saleDate, String string, String partyAcc, String totalAmt, String vcno) {
+	public boolean insertNewBillSale(String saleDate, String string, String partyAcc, String totalAmt, String vcno,
+			Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			List<Object[]> partyIds = query.list();
@@ -3885,17 +4362,16 @@ public class GameLobbyController {
 			query2.executeUpdate();
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
 	}
 
-	public boolean updateTransactionPartyBalanceSale(String partyAcc, String currBalance, String hcrdr) {
+	public boolean updateTransactionPartyBalanceSale(String partyAcc, String currBalance, String hcrdr, Session session,
+			Transaction transaction) {
 		// TODO Auto-generated method stub
-		Transaction transaction = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
-			transaction = session.beginTransaction();
 			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			List<Object[]> partyIds = query.list();
@@ -3911,7 +4387,7 @@ public class GameLobbyController {
 					+ append + " WHERE party_id=" + partyLedgerId + "";
 			SQLQuery query2 = session.createSQLQuery(sqlString);
 			query2.executeUpdate();
-			transaction.commit();
+
 			return true;
 		} catch (Exception e) {
 			transaction.rollback();
@@ -3921,14 +4397,11 @@ public class GameLobbyController {
 	}
 
 	public boolean updateTransactionPartyBalanceJournal(String particulars, String debitAmt, String creditAmt,
-			String cr_dr, String hiddenAmnt, String hiddenTypeOfRef, String hiddenBillWiseName,
-			String journalNoVoucher) {
+			String cr_dr, String hiddenAmnt, String hiddenTypeOfRef, String hiddenBillWiseName, String journalNoVoucher,
+			Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
-		Transaction transaction = null;
 
 		try {
-			Session session = HibernateSessionFactory.getSession();
-			transaction = session.beginTransaction();
 			String particularsArr[] = particulars.split(",");
 			String debitAmtArr[] = debitAmt.split(",");
 			String creditAmtArr[] = creditAmt.split(",");
@@ -3960,7 +4433,7 @@ public class GameLobbyController {
 							flag = false;
 							if (typeOfRefArr[j].trim().equals("New Ref")) {
 								insertNewBill(date.format(formatter), "Agst Ref", tempParticularName,
-										String.valueOf(totalBlnc), journalNoVoucher);
+										String.valueOf(totalBlnc), journalNoVoucher, session, transaction);
 							} else if (typeOfRefArr[j].trim().equals("Agst Ref")) {
 								String arr[] = hiddenBillWiseNameArr[j].split(" ");
 								int billId = Integer.valueOf(arr[0].trim());
@@ -3982,7 +4455,7 @@ public class GameLobbyController {
 								flag = true;
 							} else {
 								insertNewBill(date.format(formatter), typeOfRefArr[j], tempParticularName,
-										String.valueOf(totalBlnc), journalNoVoucher);
+										String.valueOf(totalBlnc), journalNoVoucher, session, transaction);
 							}
 							String qu = "INSERT INTO st_rm_journal_bill_mapping(`jouVcr`,`billVcr`,`amount`,`type_of_ref`,`bill_type`) values('"
 									+ journalNoVoucher + "','" + hiddenBillWiseNameArr[j].split(" ")[0].trim() + "','"
@@ -4035,7 +4508,7 @@ public class GameLobbyController {
 							flag = false;
 							if (typeOfRefArr[j].trim().equals("New Ref")) {
 								insertNewBillSale(date.format(formatter), "Agst Ref", tempParticularName,
-										String.valueOf(totalBlnc), journalNoVoucher);
+										String.valueOf(totalBlnc), journalNoVoucher, session, transaction);
 							} else if (typeOfRefArr[j].trim().equals("Agst Ref")) {
 								String arr[] = hiddenBillWiseNameArr[j].split(" ");
 								int billId = Integer.valueOf(arr[0].trim());
@@ -4057,7 +4530,7 @@ public class GameLobbyController {
 								flag = true;
 							} else {
 								insertNewBillSale(date.format(formatter), typeOfRefArr[j], tempParticularName,
-										String.valueOf(totalBlnc), journalNoVoucher);
+										String.valueOf(totalBlnc), journalNoVoucher, session, transaction);
 							}
 							String qu = "INSERT INTO st_rm_journal_bill_mapping(`jouVcr`,`billVcr`,`amount`,`type_of_ref`,`bill_type`) values('"
 									+ journalNoVoucher + "','" + hiddenBillWiseNameArr[j].split(" ")[0].trim() + "','"
@@ -4167,7 +4640,6 @@ public class GameLobbyController {
 				query.executeUpdate();
 
 			}
-			transaction.commit();
 			return true;
 		} catch (Exception e) {
 			transaction.rollback();
@@ -4266,10 +4738,10 @@ public class GameLobbyController {
 		return 0;
 	}
 
-	public boolean updateTransactionPartyBalanceSaleCreditNote(String partyAcc, String currBalance, String hcrdr) {
+	public boolean updateTransactionPartyBalanceSaleCreditNote(String partyAcc, String currBalance, String hcrdr,
+			Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			List<Object[]> partyIds = query.list();
@@ -4288,6 +4760,7 @@ public class GameLobbyController {
 			query2.executeUpdate();
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -4398,12 +4871,10 @@ public class GameLobbyController {
 		return finalString;
 	}
 
-	public boolean updateTransactionPartyBalancePayment(String partyAcc, String currBalance, String hcrdr) {
+	public boolean updateTransactionPartyBalancePayment(String partyAcc, String currBalance, String hcrdr,
+			Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
-		Transaction transaction = null;
 		try {
-			Session session = HibernateSessionFactory.getSession();
-			transaction = session.beginTransaction();
 			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			List<Object[]> partyIds = query.list();
@@ -4423,7 +4894,6 @@ public class GameLobbyController {
 					+ append + " WHERE party_id=" + partyLedgerId + "";
 			SQLQuery query2 = session.createSQLQuery(sqlString);
 			query2.executeUpdate();
-			transaction.commit();
 			return true;
 		} catch (Exception e) {
 			transaction.rollback();
@@ -4463,7 +4933,7 @@ public class GameLobbyController {
 
 	public boolean markAttendance(int employeeUserName, String attendanceType, String workType, String workArea,
 			String travellingMode, String odoMeterPicture, String selfiePicture, String odometer_reading,
-			String leave_reason, String travellingModeVia, VisitFormBean bean) {
+			String leave_reason, String travellingModeVia, VisitFormBean bean, String visitLocation) {
 		Session session = null;
 		Transaction transaction = null;
 
@@ -4496,10 +4966,10 @@ public class GameLobbyController {
 							+ employeeUserName + " and date='" + YMD + "'";
 					SQLQuery query3 = session.createSQLQuery(sqlString);
 					query3.executeUpdate();
-					sqlString = "INSERT INTO bo_um_emp_attendace_details(`detail_id`,`work_type`,`work_area`,`travelling_mode`,`travelling_via`,`odometer_picture_in`,`odometer_reading_in`,`selfie_in`) values("
+					sqlString = "INSERT INTO bo_um_emp_attendace_details(`detail_id`,`work_type`,`work_area`,`travelling_mode`,`travelling_via`,`odometer_picture_in`,`odometer_reading_in`,`selfie_in`,`visit_location`) values("
 							+ (int) obj[0] + ",'" + workType + "','" + workArea + "','" + travellingMode + "','"
 							+ travellingModeVia + "','" + odoMeterPicture + "','" + odometer_reading.trim() + "','"
-							+ selfiePicture + "')";
+							+ selfiePicture + "','" + visitLocation + "')";
 					SQLQuery query4 = session.createSQLQuery(sqlString);
 					query4.executeUpdate();
 					break;
@@ -4676,7 +5146,7 @@ public class GameLobbyController {
 				attendanceBean.setTravellingMode(obj[11] != null ? obj[11].toString() : "");
 				attendanceBean.setWorkArea(obj[10] != null ? obj[10].toString() : "");
 				attendanceBean.setWorkType(obj[9] != null ? obj[9].toString() : "");
-
+				attendanceBean.setVisitLocation(obj[20] != null ? obj[20].toString() : "");
 				String sDate1 = obj[5] != null ? obj[5].toString() : null;
 				String sDate2 = obj[6] != null ? obj[6].toString() : null;
 				if (sDate1 != null && sDate2 != null) {
@@ -5033,6 +5503,32 @@ public class GameLobbyController {
 							+ ")'>click here to view</a>. \n";
 					count++;
 				}
+				SQLQuery query3 = session.createSQLQuery(
+						"SELECT * FROM payment_order_staus_alert WHERE emp_id=" + userId + " ORDER BY id DESC");
+				List<Object[]> result3 = query3.list();
+				for (Object[] obj : result3) {
+					String empName = getUserNameById((int) obj[4]);
+					notification = notification + "<div>" + count + ".)" + "Payment order number <font color='red'><b>"
+							+ obj[2].toString() + "</b></font> is <b><font color='#E67E22'<b>"
+							+ obj[3].toString().toUpperCase() + "</b></font> by <b>" + empName.toUpperCase()
+							+ "</b> <a href='javascript:;' onclick='showPaymentOrderEmp(" + obj[2].toString()
+							+ ")'>click here to view</a>. \n";
+					count++;
+				}
+				SQLQuery query4 = session.createSQLQuery(
+						"SELECT * FROM creditNote_order_staus_alert WHERE emp_id=" + userId + " ORDER BY id DESC");
+				List<Object[]> result4 = query4.list();
+				for (Object[] obj : result4) {
+					String empName = getUserNameById((int) obj[4]);
+					notification = notification + "<div>" + count + ".)"
+							+ "Credit Note order number <font color='red'><b>" + obj[2].toString()
+							+ "</b></font> is <b><font color='#E67E22'<b>" + obj[3].toString().toUpperCase()
+							+ "</b></font> by <b>" + empName.toUpperCase()
+							+ "</b> <a href='javascript:;' onclick='showCreditNoteOrderEmp(" + obj[2].toString()
+							+ ")'>click here to view</a>. \n";
+					count++;
+				}
+
 				return notification + "|" + (count - 1);
 			}
 
@@ -5288,7 +5784,8 @@ public class GameLobbyController {
 			for (Object[] obj : result) {
 				data = "" + (int) obj[0] + "|" + (int) obj[1] + "|" + obj[3].toString() + "|" + obj[5].toString() + "|"
 						+ obj[6].toString() + "|" + obj[7].toString() + "|" + obj[8].toString() + "|"
-						+ obj[9].toString();
+						+ obj[9].toString() + "|" + obj[10].toString() + "|" + obj[11].toString() + "|"
+						+ obj[13].toString() + "|" + obj[14].toString();
 			}
 			return data;
 		} catch (Exception e) {
@@ -5453,7 +5950,9 @@ public class GameLobbyController {
 			for (Object[] obj : result) {
 				data = "" + (int) obj[0] + "|" + obj[1].toString() + "|" + (int) obj[3] + "|" + obj[5].toString() + "|"
 						+ obj[6].toString() + "|" + obj[7].toString() + "|" + obj[8].toString() + "|"
-						+ obj[9].toString() + "|" + obj[11].toString();
+						+ obj[9].toString() + "|" + obj[11].toString() + "|" + obj[12].toString() + "|"
+						+ obj[13].toString() + "|" + obj[14].toString() + "|" + obj[16] + "|" + obj[17] + "|" + obj[18]
+						+ "|" + obj[19] + "|" + obj[20] + "|" + obj[21] + "|" + obj[22] + "|" + obj[23];
 			}
 			return data;
 		} catch (Exception e) {
@@ -5643,14 +6142,18 @@ public class GameLobbyController {
 			}
 
 			SQLQuery query2 = session.createSQLQuery(
-					"SELECT customerName,contact,firmEmail from bo_um_ledger_details where ledgerId=" + ledger_id);
+					"SELECT * from bo_um_ledger_details where ledgerId=" + ledger_id);
 			List<Object[]> objRes = query2.list();
 			if (objRes != null && !objRes.isEmpty() && objRes.size() > 0) {
 				for (Object[] o : objRes) {
-					ledgerCustomBean.setPropName(o[0] != null ? o[0].toString() : "");
-					ledgerCustomBean.setContact(o[1] != null ? o[1].toString() : "");
-					ledgerCustomBean.setEmail(o[2] != null ? o[2].toString() : "");
-
+					ledgerCustomBean.setPropName(o[2] != null ? o[2].toString() : "");
+					ledgerCustomBean.setContact(o[10] != null ? o[10].toString() : "");
+					ledgerCustomBean.setEmail(o[15] != null ? o[15].toString() : "");
+					ledgerCustomBean.setAddress(o[5] != null ? o[5].toString() : "");	
+					ledgerCustomBean.setResPerAddr(o[12] != null ? o[12].toString() : "");
+					ledgerCustomBean.setDistrict(o[7] != null ? o[7].toString() : "");
+					ledgerCustomBean.setTehsil(o[8] != null ? o[8].toString() : "");
+					ledgerCustomBean.setPincode(o[9] != null ? o[9].toString() : "");
 				}
 
 			}
@@ -5715,6 +6218,44 @@ public class GameLobbyController {
 							+ "',date_of_security_interest='" + ledgerCustomBean.getIntersetStartDate()
 							+ "' WHERE ledger_id=" + ledgerCustomBean.getLedgerId() + " and is_security='Yes'");
 			query.executeUpdate();
+			query = session.createSQLQuery(
+					"UPDATE bo_um_ledger_details SET address='" + ledgerCustomBean.getAddress()+ "',district='" + ledgerCustomBean.getDistrict()
+							+ "',tehsil='"+ledgerCustomBean.getTehsil()+"',pincode='"+ledgerCustomBean.getPincode()+"',resPerAddr='"+ledgerCustomBean.getResPerAddr()+"' WHERE ledgerId=" + ledgerCustomBean.getLedgerId());
+			query.executeUpdate();
+			
+			String partyTy = getPartyTypeById(ledgerCustomBean.getLedgerId());
+			if (ledgerCustomBean.getoBalanceType().equalsIgnoreCase("Dr")
+					&& partyTy.equalsIgnoreCase("Sundry debtors")) {
+				
+				query = session.createSQLQuery("SELECT * FROM st_rm_bill_wise_details_sale WHERE party_id="+ledgerCustomBean.getLedgerId()+" and sale_voucher_number='JSC/OPENING/BAL'");
+				List<Object[]> checkExistsResult = query.list();
+				if(checkExistsResult!=null && !checkExistsResult.isEmpty() && checkExistsResult.size()>0) {
+					query = session.createSQLQuery("UPDATE st_rm_bill_wise_details_sale SET balance='"+ledgerCustomBean.getoBalance()+"',blnc_type='"+ledgerCustomBean.getoBalanceType()+"',date='"+ledgerCustomBean.getOpeningDate()+"' WHERE party_id="+ledgerCustomBean.getLedgerId()+" and sale_voucher_number='JSC/OPENING/BAL'");
+					query.executeUpdate();
+					String b = ledgerCustomBean.getoBalance()+" "+ledgerCustomBean.getoBalanceType();
+					query = session.createSQLQuery("UPDATE st_rm_party_txn_curr_balance_master SET party_balance_bef_txn='"+b+"',party_balance_aft_txn='"+b+"',date='"+ledgerCustomBean.getOpeningDate()+"' WHERE party_id="+ledgerCustomBean.getLedgerId()+" and voucher_id='JSC/OPENING/BAL'");
+					query.executeUpdate();
+					
+				}
+				else {
+					query = session.createSQLQuery(
+							"INSERT INTO st_rm_bill_wise_details_sale(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`,`blnc_type`,`purchase_used`,`sale_voucher_number`,`tax_amount`) values('Agst Ref',"
+									+ ledgerCustomBean.getLedgerId() + ",'" + ledgerCustomBean.getoBalance() + "','No','"
+									+ ledgerCustomBean.getOpeningDate() + "','" + ledgerCustomBean.getoBalanceType()
+									+ "','No','JSC/OPENING/BAL','0')");
+					query.executeUpdate();
+					String b = ledgerCustomBean.getoBalance()+" "+ledgerCustomBean.getoBalanceType();
+					query = session.createSQLQuery(
+					"INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+					+ ledgerCustomBean.getLedgerId() + ",'" + b + "','"+b+"','"
+					+ ledgerCustomBean.getOpeningDate() + "','OPENING','JSC/OPENING/BAL')");
+					query.executeUpdate();
+	
+				}
+				}
+
+			
+
 			if (ledgerCustomBean.getCreditLimitEligible().equalsIgnoreCase("No")) {
 				query = session.createSQLQuery("UPDATE st_rm_credit_limit SET credit_limit=-1 WHERE ledger_id="
 						+ ledgerCustomBean.getLedgerId());
@@ -5995,24 +6536,63 @@ public class GameLobbyController {
 		return 0;
 	}
 
-	public boolean createTransactionCreditNote(String referenceNo, String employeeUnder, String partyAcc,
+	public boolean createTransactionCreditNote(String partyOldBalance, String employeeUnder, String partyAcc,
 			String salesAccount, String salesStockItems, String amount, String qty, String rate, String narration,
 			String cnNoVoucher, String paymentDate, String ddn, String tn, String des, String billt,
-			String transportFreight, String vn, String under_vcr_id, String totalAmt, String godown, String batch) {
+			String transportFreight, String vn, String under_vcr_id, String totalAmt, String godown, String batch,
+			Session session, Transaction transaction) {
 
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
 			int empId = getEmployeeId(employeeUnder);
-			String sqlString = "INSERT INTO st_rm_txn_creditNote_master(`party_acc_name`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`totalAmt`,`voucher_numbering`,`cn_date`,`ddn`,`transport_name`,`destination`,`bill_t`,`transport_fright`,`vehicle_no`,`under_vcr_id`,`godown`,`batch`) values('"
+			int partyId = getLedgerIdByName(partyAcc);
+			String sqlString = "SELECT voucher_numbering from st_rm_txn_creditNote_master";
+			SQLQuery query1 = session.createSQLQuery(sqlString);
+			List<String> list = query1.list();
+			if (list != null && !list.isEmpty()) {
+
+				if (list.contains(cnNoVoucher)) {
+					return false;
+				}
+			}
+			LocalDate date = LocalDate.now();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date.format(formatter);
+			if (paymentDate == null || paymentDate.isEmpty()) {
+				paymentDate = currentDate;
+			}
+			sqlString = "INSERT INTO st_rm_txn_creditNote_master(`party_acc_name`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`totalAmt`,`voucher_numbering`,`cn_date`,`ddn`,`transport_name`,`destination`,`bill_t`,`transport_fright`,`vehicle_no`,`under_vcr_id`,`godown`,`batch`) values('"
 					+ partyAcc + "'," + empId + ",'" + salesAccount + "','" + salesStockItems + "','" + qty + "','"
 					+ rate + "','" + amount + "','" + narration + "','" + totalAmt + "','" + cnNoVoucher + "','"
 					+ paymentDate + "','" + ddn + "','" + tn + "','" + des + "','" + billt + "','" + transportFreight
 					+ "','" + vn + "'," + under_vcr_id + ",'" + godown + "','" + batch + "')";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
+
+			String[] balnArr = partyOldBalance.split(" ");
+			Double afterTxnBal = 0.0;
+			String blncType = "";
+			if (balnArr[1].equalsIgnoreCase("Cr")) {
+				afterTxnBal = Double.valueOf(balnArr[0]) + Double.valueOf(totalAmt);
+				blncType = "Cr";
+			} else {
+				afterTxnBal = Double.valueOf(balnArr[0]) - Double.valueOf(totalAmt);
+				if (afterTxnBal < 0) {
+					afterTxnBal = afterTxnBal * (-1);
+					blncType = "Cr";
+				} else
+					blncType = "Dr";
+			}
+			String aftTxn = afterTxnBal + " " + blncType;
+			sqlString = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+					+ partyId + ",'" + partyOldBalance + "','" + aftTxn + "','" + paymentDate + "','CREDIT NOTE','"
+					+ cnNoVoucher + "')";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			query2.executeUpdate();
+
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -6141,12 +6721,10 @@ public class GameLobbyController {
 		return new ArrayList<String>();
 	}
 
-	public boolean adjustSaleBill(String hiddenAmnt, String hiddenBilId, String typeOfRef, String partyAcc,
-			String cnNo) {
+	public boolean adjustSaleBill(String hiddenAmnt, String hiddenBilId, String typeOfRef, String partyAcc, String cnNo,
+			Session session, Transaction transaction) {
 		// TODO Auto-generated method stub
 		try {
-			Session session = HibernateSessionFactory.getSession();
-
 			int partyId = getLedgerIdByName(partyAcc);
 			String hiddenAmntArr[] = hiddenAmnt.split(",");
 			String hiddenBilIdArr[] = hiddenBilId.split(",");
@@ -6216,6 +6794,7 @@ public class GameLobbyController {
 			}
 			return true;
 		} catch (Exception e) {
+			transaction.rollback();
 			e.printStackTrace();
 		}
 		return false;
@@ -6249,6 +6828,66 @@ public class GameLobbyController {
 			if (list != null && !list.isEmpty() && list.size() > 0) {
 				for (String s : list) {
 					data = data + s + ";";
+				}
+			}
+			return data;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getBillsOfPartyOverDue(String ledgerName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Date today = new Date();
+			DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+			Calendar c = Calendar.getInstance();
+			TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+			c.setTimeZone(tz);
+			String date = df.format(today);
+
+			int ledgerId = getLedgerIdByName(ledgerName);
+			Integer by = 0;
+			Integer graceP = 0;
+			Integer totalPeriod = 0;
+			SQLQuery sqlQuery = session
+					.createSQLQuery("select `by`,`grace_period` from st_rm_ledger_interset_calculation where ledger_id="
+							+ ledgerId + " and is_security='No' and rate_on='Debit Balances Only'");
+			List<Object[]> result = sqlQuery.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+				for (Object[] o : result) {
+					by = Integer.valueOf(o[0].toString());
+					graceP = Integer.valueOf(o[1].toString());
+				}
+
+			}
+			totalPeriod = by + graceP;
+
+			SQLQuery query = session
+					.createSQLQuery("SELECT date,sale_voucher_number from st_rm_bill_wise_details_sale WHERE party_id="
+							+ ledgerId + " and is_used='No' and type_of_ref='Agst Ref'");
+			List<Object[]> listResult = query.list();
+			String data = "";
+			if (listResult != null && !listResult.isEmpty() && listResult.size() > 0) {
+				for (Object[] obj : listResult) {
+					String billDate = obj[0].toString();
+					c.setTime(df.parse(billDate));
+					c.add(Calendar.DAY_OF_MONTH, totalPeriod);
+					// Date after adding the days to the given date
+					String dateAftPeriod = df.format(c.getTime());
+					SQLQuery queryChk = session.createSQLQuery("SELECT * FROM temp_old_bill_bulk_schedule_master WHERE voucher_number='"+obj[1].toString()+"'");
+					List<Object[]> resultChk = queryChk.list();
+					if(resultChk!=null && !resultChk.isEmpty() && resultChk.size()>0) {
+						continue;	
+					}
+					else {
+						if (compareTwoDate(dateAftPeriod, date)) {
+							data = data + obj[1].toString() + ";";
+						}
+					}
+					
 				}
 			}
 			return data;
@@ -6611,10 +7250,10 @@ public class GameLobbyController {
 	private boolean compareTwoDate(String first, String second) {
 		// TODO Auto-generated method stub
 		try {
-			if(!first.contains("00:00"))
-				first = first+" 00:00";
-			if(!second.contains("00:00"))
-				second = second+" 00:00";
+			if (!first.contains("00:00"))
+				first = first + " 00:00";
+			if (!second.contains("00:00"))
+				second = second + " 00:00";
 			SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy h:m");
 			if (sdf.parse(second).after(sdf.parse(first))) {
 				return true;
@@ -6629,11 +7268,11 @@ public class GameLobbyController {
 	private boolean compareEqualsDate(String first, String second) {
 		// TODO Auto-generated method stub
 		try {
-			if(!first.contains("00:00"))
-				first = first+" 00:00";
-			if(!second.contains("00:00"))
-				second = second+" 00:00";
-			
+			if (!first.contains("00:00"))
+				first = first + " 00:00";
+			if (!second.contains("00:00"))
+				second = second + " 00:00";
+
 			SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy h:m");
 			if (sdf.parse(second).equals(sdf.parse(first))) {
 				return true;
@@ -6695,9 +7334,10 @@ public class GameLobbyController {
 									if (compareTwoDate(datePeriod + " 00:00", currentDate + " 00:00")) {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
+										taxRate = taxRate*12;
 										int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_MONTH);
 										logger.info("------------------->DAYS IN MONTH IS :" + monthMaxDays);
-										double dayPercentRateCalculate = taxRate / (double) monthMaxDays;
+										double dayPercentRateCalculate = (taxRate / 365);
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -6723,8 +7363,30 @@ public class GameLobbyController {
 											partyBlnc = o[2].toString();
 											blncTyp = o[3].toString();
 										}
-
-										SQLQuery Schquery = session.createSQLQuery(
+										if(blncTyp.equals("Dr")) {
+											String _partyBlnc = String.valueOf(Double.valueOf(partyBlnc) + billTax);
+											SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+											queryCurBal.executeUpdate();
+										
+										}
+										else if(blncTyp.equals("Cr")) {
+											SQLQuery queryRate = session.createSQLQuery("SELECT rate FROM st_rm_ledger_interset_calculation WHERE rate_on IN('Credit Balances Only') and ledger_id="+ledgerId+" limit 1");
+											List<String> queryRateRes = queryRate.list();
+											if(queryRateRes!=null && !queryRateRes.isEmpty() && queryRateRes.size()>0) {
+												
+												Double _txRate = Double.valueOf(queryRateRes.get(0));
+												int _yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
+												double _dayPercentRateCalculate = (_txRate / 365) * (double) _yearMaxDays;
+												Double _billTax = (Double.valueOf(partyBlnc) * _dayPercentRateCalculate) / 100;
+												Double _partyBlnc = Double.valueOf(partyBlnc)+_billTax;
+												SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+												queryCurBal.executeUpdate();
+											
+												
+											}
+										}
+										
+											SQLQuery Schquery = session.createSQLQuery(
 												"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
 														+ ledgerId + "," + saleBillId + ",'" + saleObj[8]
 														+ "','success','" + date.format(formatter) + "','"
@@ -6763,9 +7425,10 @@ public class GameLobbyController {
 									if (compareTwoDate(purchasedatePeriod + " 00:00", currentDate + " 00:00")) {
 
 										Double PtaxRate = Double.valueOf(obj[6].toString());
+										PtaxRate = PtaxRate*12;
 										Calendar Pc = Calendar.getInstance();
 										int PmonthMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_MONTH);
-										double PdayPercentRateCalculate = PtaxRate / (double) PmonthMaxDays;
+										double PdayPercentRateCalculate = (PtaxRate / 365);
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -6845,7 +7508,7 @@ public class GameLobbyController {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
 										int yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double dayPercentRateCalculate = taxRate / (double) yearMaxDays;
+										double dayPercentRateCalculate = (taxRate / 365);
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -6871,7 +7534,28 @@ public class GameLobbyController {
 											partyBlnc = o[2].toString();
 											blncTyp = o[3].toString();
 										}
-
+										if(blncTyp.equals("Dr")) {
+											String _partyBlnc = String.valueOf(Double.valueOf(partyBlnc) + billTax);
+											SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+											queryCurBal.executeUpdate();
+										
+										}
+										else if(blncTyp.equals("Cr")) {
+											SQLQuery queryRate = session.createSQLQuery("SELECT rate FROM st_rm_ledger_interset_calculation WHERE rate_on IN('Credit Balances Only') and ledger_id="+ledgerId+" limit 1");
+											List<String> queryRateRes = queryRate.list();
+											if(queryRateRes!=null && !queryRateRes.isEmpty() && queryRateRes.size()>0) {
+												
+												Double _txRate = Double.valueOf(queryRateRes.get(0));
+												int _yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
+												double _dayPercentRateCalculate = (_txRate / 365) * (double) _yearMaxDays;
+												Double _billTax = (Double.valueOf(partyBlnc) * _dayPercentRateCalculate) / 100;
+												Double _partyBlnc = Double.valueOf(partyBlnc)+_billTax;
+												SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+												queryCurBal.executeUpdate();
+											
+												
+											}
+										}
 										SQLQuery Schquery = session.createSQLQuery(
 												"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
 														+ ledgerId + "," + saleBillId + ",'" + saleObj[8]
@@ -6915,7 +7599,7 @@ public class GameLobbyController {
 										Double PtaxRate = Double.valueOf(obj[6].toString());
 										Calendar Pc = Calendar.getInstance();
 										int PyearMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double PdayPercentRateCalculate = PtaxRate / (double) PyearMaxDays;
+										double PdayPercentRateCalculate = (PtaxRate / 365);
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -7036,8 +7720,9 @@ public class GameLobbyController {
 						Calendar c = Calendar.getInstance();
 						TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
 						c.setTimeZone(tz);
+						rate = rate * 12;
 						int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_MONTH);
-						double dayPercentRateCalculate = rate / (double) monthMaxDays;
+						double dayPercentRateCalculate = (rate / 365);
 						double finalTaxAmount = (dayPercentRateCalculate * securityAmt) / 100;
 						SQLQuery query1 = session.createSQLQuery(
 								"SELECT * FROM st_rm_purchase_party_master_balance where party_id=" + partyId);
@@ -7090,9 +7775,9 @@ public class GameLobbyController {
 
 								SQLQuery Schquery = session.createSQLQuery(
 										"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
-												+ partyId + ",'-1','none','success','" + date.format(formatter)
-												+ "','" + securityAmt + "','" + finalTaxAmount + "','" + partyBal
-												+ "','" + partyBal + "','" + balType + "','Security Amount')");
+												+ partyId + ",'-1','none','success','" + date.format(formatter) + "','"
+												+ securityAmt + "','" + finalTaxAmount + "','" + partyBal + "','"
+												+ partyBal + "','" + balType + "','Security Amount')");
 								Schquery.executeUpdate();
 
 							}
@@ -7107,7 +7792,7 @@ public class GameLobbyController {
 						TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
 						c.setTimeZone(tz);
 						int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
-						double dayPercentRateCalculate = rate / (double) monthMaxDays;
+						double dayPercentRateCalculate = (rate / 365);
 						double finalTaxAmount = (dayPercentRateCalculate * securityAmt) / 100;
 						SQLQuery query1 = session.createSQLQuery(
 								"SELECT * FROM st_rm_purchase_party_master_balance where party_id=" + partyId);
@@ -7158,9 +7843,9 @@ public class GameLobbyController {
 								sqlQuery2.executeUpdate();
 								SQLQuery Schquery = session.createSQLQuery(
 										"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
-												+ partyId + ",-1,'none','success','" + date.format(formatter)
-												+ "','" + securityAmt + "','" + finalTaxAmount + "','" + partyBal
-												+ "','" + partyBal + "','" + balType + "','Security Amount')");
+												+ partyId + ",-1,'none','success','" + date.format(formatter) + "','"
+												+ securityAmt + "','" + finalTaxAmount + "','" + partyBal + "','"
+												+ partyBal + "','" + balType + "','Security Amount')");
 								Schquery.executeUpdate();
 							}
 						}
@@ -7244,7 +7929,7 @@ public class GameLobbyController {
 										Double taxRate = Double.valueOf(obj[6].toString());
 										int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_MONTH);
 										logger.info("------------------->DAYS IN MONTH IS :" + monthMaxDays);
-										double dayPercentRateCalculate = taxRate / (double) monthMaxDays;
+										double dayPercentRateCalculate = (taxRate / 365) * (double) monthMaxDays;
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -7311,7 +7996,7 @@ public class GameLobbyController {
 										Double PtaxRate = Double.valueOf(obj[6].toString());
 										Calendar Pc = Calendar.getInstance();
 										int PmonthMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_MONTH);
-										double PdayPercentRateCalculate = PtaxRate / (double) PmonthMaxDays;
+										double PdayPercentRateCalculate = (PtaxRate / 365) * (double) PmonthMaxDays;
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -7388,7 +8073,7 @@ public class GameLobbyController {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
 										int yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double dayPercentRateCalculate = taxRate / (double) yearMaxDays;
+										double dayPercentRateCalculate = (taxRate / 365) * (double) yearMaxDays;
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -7456,7 +8141,7 @@ public class GameLobbyController {
 										Double PtaxRate = Double.valueOf(obj[6].toString());
 										Calendar Pc = Calendar.getInstance();
 										int PyearMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double PdayPercentRateCalculate = PtaxRate / (double) PyearMaxDays;
+										double PdayPercentRateCalculate = (PtaxRate / 365) * (double) PyearMaxDays;
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -7656,7 +8341,7 @@ public class GameLobbyController {
 				if (result != null && !result.isEmpty() && result.size() > 0) {
 					for (Integer userId : result) {
 						sqlString = "SELECT * FROM bo_um_employee_attendance WHERE date='" + date.format(formatter)
-								+ "' and attendance_type='W' and emp_id="+userId+"";
+								+ "' and attendance_type='W' and emp_id=" + userId + "";
 						SQLQuery qu = session.createSQLQuery(sqlString);
 						List<Object[]> oResult = qu.list();
 						if (oResult != null && !oResult.isEmpty() && oResult.size() > 0)
@@ -8044,8 +8729,20 @@ public class GameLobbyController {
 
 					int billId = (int) obj[0];
 					int partyId = (int) obj[2];
+					sqlString = "SELECT balance,balance_type from st_rm_purchase_party_master_balance where party_id="
+							+ partyId;
+					SQLQuery queryS = session.createSQLQuery(sqlString);
+					List<Object[]> objBal = queryS.list();
+					String partyBal = "";
+					if (objBal != null && !objBal.isEmpty() && objBal.size() > 0) {
+						for (Object[] o : objBal) {
+							partyBal = o[0] + " " + o[1];
+						}
+
+					}
 					String billDate = obj[5].toString();
 					String vchrNo = obj[8].toString();
+					String billamt = obj[3].toString();
 					int billDueLimit = getCreditPeriod(partyId);
 					c.setTime(sdf.parse(billDate));
 					c.add(Calendar.DAY_OF_MONTH, billDueLimit);
@@ -8067,13 +8764,15 @@ public class GameLobbyController {
 								String propName = getPropName(partyId);
 								String firmName = getPropFirmName(partyId);
 								String sms = "Dear " + propName + ", Your bill no. " + vchrNo + ", billing date "
-										+ billDate + " due on " + DueBillDate
+										+ billDate + " of amount " + billamt + " due on " + DueBillDate
+										+ ". Your current balance is " + partyBal + "."
 										+ ". Please pay your bill amount before due date to avoid interest charges. Please ignore if you have already paid. Regards JAMIDARA SEEDS CORPORATION (Karnataka) ";
 								sendSMS(propContact, sms);
 								String empMobile = getUnderEmpMobile(partyId);
 								String empname = getUnderEmpName(partyId);
 								String sms1 = "Dear " + empname + ", Your distributor " + firmName + " bill no. "
-										+ vchrNo + ", billing date " + billDate + " due on " + DueBillDate
+										+ vchrNo + ", billing date " + billDate + "of amount " + billamt + " due on "
+										+ DueBillDate + ". Party Current Balance is " + partyBal + "."
 										+ ". Please collect bill amount before due date to avoid interest charges & to avoid discontinuity of transactions. Regards JAMIDARA SEEDS CORPORATION (Karnataka) ";
 								sendSMS(empMobile, sms1);
 							}
@@ -8331,13 +9030,50 @@ public class GameLobbyController {
 		}
 	}
 
-	public void setDocumentPathReceipt(int receiptNo, String fileFullPath, int userId) {
+	public void setDocumentPathReceipt(int receiptNo, String fileFullPath, int userId,String txnType) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master_emp SET doc_path='" + fileFullPath
-					+ "' WHERE receiptId=" + receiptNo + " and emp_id=" + userId);
-			query.executeUpdate();
+			SQLQuery query = null;
+			
+			if(txnType!=null && txnType.equals("receipt")) {
+				query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master SET doc_path='" + fileFullPath
+						+ "' WHERE receiptId=" + receiptNo + " and empId=" + userId);
+				query.executeUpdate();
+				
+			}
+			else {
+				 query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master_emp SET doc_path='" + fileFullPath
+							+ "' WHERE receiptId=" + receiptNo + " and emp_id=" + userId);
+					query.executeUpdate();
+						
+				
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void setDocumentPathPayment(int paymentNo, String fileFullPath, int userId,String txnType) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query =null;
+			
+			if(txnType!=null && txnType.equals("payment")) {
+				query = session.createSQLQuery("UPDATE st_rm_txn_payment_master SET doc_path='" + fileFullPath
+						+ "' WHERE paymentId=" + paymentNo + " and empId=" + userId);
+				query.executeUpdate();
+					
+				
+			}
+			else {
+				
+				query = session.createSQLQuery("UPDATE st_rm_txn_payment_master_emp SET doc_path='" + fileFullPath
+						+ "' WHERE paymentId=" + paymentNo + " and emp_id=" + userId);
+				query.executeUpdate();
+			
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -8459,9 +9195,10 @@ public class GameLobbyController {
 									if (compareEqualsDate(datePeriod + " 00:00", currentDate + " 00:00")) {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
+										taxRate = taxRate*12;
 										int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_MONTH);
 										logger.info("------------------->DAYS IN MONTH IS :" + monthMaxDays);
-										double dayPercentRateCalculate = taxRate / (double) totalDays;
+										double dayPercentRateCalculate = (taxRate /365)* (double) totalDays;
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -8530,7 +9267,8 @@ public class GameLobbyController {
 										Double PtaxRate = Double.valueOf(obj[6].toString());
 										Calendar Pc = Calendar.getInstance();
 										int PmonthMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_MONTH);
-										double PdayPercentRateCalculate = PtaxRate / (double) totalDays;
+										PtaxRate = PtaxRate *12;
+										double PdayPercentRateCalculate = (PtaxRate / 365)*(double) totalDays;
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -8608,7 +9346,7 @@ public class GameLobbyController {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
 										int yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double dayPercentRateCalculate = taxRate / (double) totalDays;
+										double dayPercentRateCalculate = (taxRate / 365)*(double) totalDays;
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -8679,7 +9417,7 @@ public class GameLobbyController {
 										Double PtaxRate = Double.valueOf(obj[6].toString());
 										Calendar Pc = Calendar.getInstance();
 										int PyearMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double PdayPercentRateCalculate = PtaxRate / (double) totalDays;
+										double PdayPercentRateCalculate = (PtaxRate /365)* (double) totalDays;
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -8778,7 +9516,9 @@ public class GameLobbyController {
 							bean.setLedgerName(obj[1].toString());
 							bean.setTxnType(txnType);
 							bean.setSubLedger(obj[3].toString());
-							bean.setBillDate(obj[17].toString());
+							String[] dateArr = obj[17].toString().split("-");
+							String date = dateArr[2] + "/" + dateArr[1] + "/" + dateArr[0];
+							bean.setBillDate(date);
 							bean.setBillVoucherNo(obj[10].toString());
 							bean.setBillUsed(obj[33].toString());
 							bean.setTypeOfRef(obj[30].toString());
@@ -8819,7 +9559,9 @@ public class GameLobbyController {
 							bean.setLedgerName(obj[1].toString());
 							bean.setSubLedger(obj[3].toString());
 							bean.setTxnType(txnType);
-							bean.setBillDate(obj[17].toString());
+							String[] dateArr = obj[17].toString().split("-");
+							String date = dateArr[2] + "/" + dateArr[1] + "/" + dateArr[0];
+							bean.setBillDate(date);
 							bean.setBillVoucherNo(obj[10].toString());
 							bean.setBillUsed(obj[31].toString());
 							bean.setTypeOfRef(obj[28].toString());
@@ -8868,7 +9610,9 @@ public class GameLobbyController {
 							bean.setLedgerName(obj[4].toString().split(",")[0]);
 							bean.setSubLedger("-");
 							bean.setTxnType(txnType);
-							bean.setBillDate(obj[13].toString());
+							String[] dateArr = obj[13].toString().split("-");
+							String date = dateArr[2] + "/" + dateArr[1] + "/" + dateArr[0];
+							bean.setBillDate(date);
 							bean.setBillVoucherNo(obj[12].toString());
 							bean.setBillUsed("-");
 							bean.setTypeOfRef(vcrSuffix);
@@ -8910,7 +9654,9 @@ public class GameLobbyController {
 							bean.setLedgerName(obj[1].toString());
 							bean.setSubLedger(obj[3].toString());
 							bean.setTxnType(txnType);
-							bean.setBillDate(obj[11].toString());
+							String[] dateArr = obj[11].toString().split("-");
+							String date = dateArr[2] + "/" + dateArr[1] + "/" + dateArr[0];
+							bean.setBillDate(date);
 							bean.setBillVoucherNo(obj[10].toString());
 							bean.setBillUsed("-");
 							bean.setTypeOfRef("-");
@@ -8952,7 +9698,9 @@ public class GameLobbyController {
 							bean.setLedgerName(ledgerName.equals("-1") ? "-" : ledgerName);
 							bean.setSubLedger("-");
 							bean.setTxnType(txnType);
-							bean.setBillDate(obj[8].toString());
+							String[] dateArr = obj[8].toString().split("-");
+							String date = dateArr[2] + "/" + dateArr[1] + "/" + dateArr[0];
+							bean.setBillDate(date);
 							bean.setBillVoucherNo(obj[7].toString());
 							bean.setBillUsed("-");
 							bean.setTypeOfRef("-");
@@ -8969,9 +9717,8 @@ public class GameLobbyController {
 
 					}
 
-				} 
-			}
-			else {
+				}
+			} else {
 				tableName = "SELECT * from st_rm_txn_sales_master where party_acc_name='" + ledgerName + "'";
 				SQLQuery query1 = session.createSQLQuery(tableName);
 				List<Object[]> objTes1 = query1.list();
@@ -8987,7 +9734,7 @@ public class GameLobbyController {
 				tableName = "SELECT * from st_rm_txn_creditNote_master where party_acc_name='" + ledgerName + "'";
 				SQLQuery query4 = session.createSQLQuery(tableName);
 				List<Object[]> objTes4 = query4.list();
-				int j =1;
+				int j = 1;
 				if (objTes1 != null && !objTes1.isEmpty() && objTes1.size() > 0) {
 					for (Object[] obj : objTes1) {
 						bean = new BillsBean();
@@ -9284,5 +10031,887 @@ public class GameLobbyController {
 			e.printStackTrace();
 		}
 		return null;
+	}
+
+	public void setDocumentPathCreditNote(int cnNo, String fileFullPathDD, String fileFullPathTB, int userId,String txnType) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "";
+			if(txnType!=null && txnType.equalsIgnoreCase("creditNote")) {
+				 sqlString = "UPDATE st_rm_txn_creditNote_master SET dispatch_doc='" + fileFullPathDD
+							+ "', billt_doc='" + fileFullPathTB + "' where emp_id=" + userId + " and cnId=" + cnNo;
+					SQLQuery query = session.createSQLQuery(sqlString);
+					query.executeUpdate();
+				
+			}
+			else {
+				
+				 sqlString = "UPDATE st_rm_txn_creditNote_master_emp SET dispatch_doc='" + fileFullPathDD
+							+ "', billt_doc='" + fileFullPathTB + "' where emp_id=" + userId + " and cnId=" + cnNo;
+					SQLQuery query = session.createSQLQuery(sqlString);
+					query.executeUpdate();
+			}
+			
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	public boolean runOldOverDueBills(String ledgerName, String voucherNo) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			int partyId = getLedgerIdByName(ledgerName);
+
+			String voucherArr[] = voucherNo.split(",");
+
+			Date today = new Date();
+			DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+			Calendar c = Calendar.getInstance();
+			TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+			c.setTimeZone(tz);
+			String date = df.format(today);
+
+			int ledgerId = getLedgerIdByName(ledgerName);
+			Integer by = 0;
+			Integer graceP = 0;
+			String retaPer = "";
+			Integer totalPeriod = 0;
+			Double rate = 0.0;
+			SQLQuery sqlQuery = session.createSQLQuery(
+					"select `by`,`grace_period`,`rate`,`rate_per` from st_rm_ledger_interset_calculation where ledger_id="
+							+ ledgerId + " and is_security='No' and rate_on='Debit Balances Only'");
+			List<Object[]> result = sqlQuery.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+				for (Object[] o : result) {
+					by = Integer.valueOf(o[0].toString());
+					graceP = Integer.valueOf(o[1].toString());
+					rate = Double.valueOf(o[2].toString());
+					retaPer = o[3].toString();
+				}
+
+			}
+			totalPeriod = by + graceP;
+
+			for (int i = 0; i < voucherArr.length; i++) {
+
+				String sqlString = "SELECT `date`,`balance`,`tax_amount` from st_rm_bill_wise_details_sale WHERE party_id="
+						+ partyId + " and sale_voucher_number='" + voucherArr[i].trim()
+						+ "' and is_used='No' and type_of_ref='Agst Ref'";
+				SQLQuery query = session.createSQLQuery(sqlString);
+				List<Object[]> resultSale = query.list();
+				if (resultSale != null && !resultSale.isEmpty() && resultSale.size() > 0) {
+					for (Object[] sale : resultSale) {
+
+						String billDate = sale[0].toString();
+						Double Balance = Double.valueOf(sale[1].toString());
+						Double _interstAmt = Double.valueOf(sale[2].toString());
+						SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+						sdf.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+						Date _todayDate = sdf.parse(date);
+						Date _Billdate = sdf.parse(billDate);
+						sdf.applyPattern("yyyy-MM-dd");
+						String _todayDate1 = sdf.format(_todayDate);
+						String _Billdate1 = sdf.format(_Billdate);
+						Double _rate = 0.0;
+						LocalDateTime _dateToday = LocalDateTime.parse(_todayDate1);
+						LocalDateTime _dateBill = LocalDateTime.parse(_Billdate1);
+
+						Days days = Days.daysBetween(_dateBill, _dateToday);
+						if (retaPer.equalsIgnoreCase("Calendar Month")) {
+							_rate = rate * 12;
+						}
+						double dayPercentRateCalculate = (_rate / 365) * (double) days.getDays();
+
+						Double interestCalc = (Balance * dayPercentRateCalculate) / 100;
+						Balance = Balance + interestCalc;
+						_interstAmt += interestCalc;
+						sqlString = "UPDATE st_rm_bill_wise_details_sale SET balance='" + Balance + "',tax_amount='"
+								+ _interstAmt + "',tax_updated_on='" + date + "' WHERE party_id=" + partyId
+								+ " and sale_voucher_number='" + voucherArr[i].trim() + "'";
+						SQLQuery query1 = session.createSQLQuery(sqlString);
+						query1.executeUpdate();
+						sqlString = "SELECT * from st_rm_purchase_party_master_balance where party_id="+partyId;
+						SQLQuery query2 = session.createSQLQuery(sqlString);
+						List<Object[]> balancRes = query2.list();
+						String partyBlnc = "";
+						String blncTyp = "";
+						if(balancRes!=null && !balancRes.isEmpty() && balancRes.size()>0) {
+							for (Object[] o : balancRes) {
+								partyBlnc = o[2].toString();
+								blncTyp = o[3].toString();
+							}
+							
+							
+						}
+						
+						if(blncTyp.equals("Dr")) {
+							String _partyBlnc = String.valueOf(Double.valueOf(partyBlnc) + interestCalc);
+							SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+							queryCurBal.executeUpdate();
+						
+						}
+						else {
+							Double _partyBlnc = Double.valueOf(partyBlnc) - interestCalc;
+							if(_partyBlnc<0) {
+								_partyBlnc = _partyBlnc*(-1);
+								blncTyp ="Dr";
+							}
+							else {
+								blncTyp ="Cr";
+							}
+							SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"',balance_type='"+blncTyp+"' WHERE party_id="+ledgerId);
+							queryCurBal.executeUpdate();
+						}
+						
+						
+						SQLQuery queryLast = session.createSQLQuery("INSERT INTO temp_old_bill_bulk_schedule_master(`voucher_number`) values('"+voucherArr[i].trim()+"')");
+						queryLast.executeUpdate();
+						
+					}
+
+				}
+
+			}
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public Map<String, LedgerReportBean> loadLedgerReportResult(String ledgerName, String fromDate, String toDate) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Map<String, LedgerReportBean> map = new HashMap<String, LedgerReportBean>();
+			LedgerReportBean ledgerReportBean = null;
+			int count = 1;
+			String sqlString = "SELECT * FROM st_rm_txn_sales_master WHERE party_acc_name='" + ledgerName
+					+ "' and STR_TO_DATE(saleDate,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate
+					+ "','%d-%m-%Y') and STR_TO_DATE(saleDate,'%d-%m-%Y') <= STR_TO_DATE('" + toDate + "','%d-%m-%Y')";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> saleResult = query.list();
+			if (saleResult != null && !saleResult.isEmpty() && saleResult.size() > 0) {
+
+				for (Object[] obj : saleResult) {
+					ledgerReportBean = new LedgerReportBean();
+					ledgerReportBean.setId(count);
+					String date[] = obj[17].toString().split("-");
+					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					ledgerReportBean.setDate(fdate);
+					ledgerReportBean.setSubLedger(obj[3].toString());
+					ledgerReportBean.setTxnType("SALE");
+					ledgerReportBean.setVoucherNumber(obj[10].toString());
+					ledgerReportBean.setCredit("");
+					ledgerReportBean.setDebit(obj[9].toString());
+					map.put("" + count, ledgerReportBean);
+					count++;
+				}
+			}
+			sqlString = "SELECT * FROM st_rm_txn_purchase_master WHERE party_acc_name='" + ledgerName
+					+ "' and STR_TO_DATE(purchaseDate,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate
+					+ "','%d-%m-%Y') and STR_TO_DATE(purchaseDate,'%d-%m-%Y') <= STR_TO_DATE('" + toDate
+					+ "','%d-%m-%Y')";
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> purchaseResult = query.list();
+			if (purchaseResult != null && !purchaseResult.isEmpty() && purchaseResult.size() > 0) {
+
+				for (Object[] obj : purchaseResult) {
+					ledgerReportBean = new LedgerReportBean();
+					ledgerReportBean.setId(count);
+					String date[] = obj[17].toString().split("-");
+					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					ledgerReportBean.setDate(fdate);
+					ledgerReportBean.setSubLedger(obj[3].toString());
+					ledgerReportBean.setTxnType("PURCHASE");
+					ledgerReportBean.setVoucherNumber(obj[10].toString());
+					ledgerReportBean.setCredit(obj[9].toString());
+					ledgerReportBean.setDebit("");
+					map.put("" + count, ledgerReportBean);
+					count++;
+				}
+			}
+			sqlString = "SELECT * FROM st_rm_txn_creditNote_master WHERE party_acc_name='" + ledgerName
+					+ "' and STR_TO_DATE(cn_date,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate
+					+ "','%d-%m-%Y') and STR_TO_DATE(cn_date,'%d-%m-%Y') <= STR_TO_DATE('" + toDate + "','%d-%m-%Y')";
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> creditNoteResult = query.list();
+			if (creditNoteResult != null && !creditNoteResult.isEmpty() && creditNoteResult.size() > 0) {
+
+				for (Object[] obj : creditNoteResult) {
+					ledgerReportBean = new LedgerReportBean();
+					ledgerReportBean.setId(count);
+					String date[] = obj[11].toString().split("-");
+					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					ledgerReportBean.setDate(fdate);
+					ledgerReportBean.setSubLedger(obj[3].toString());
+					ledgerReportBean.setTxnType("Credit Note");
+					ledgerReportBean.setVoucherNumber(obj[10].toString());
+					ledgerReportBean.setCredit(obj[9].toString());
+					ledgerReportBean.setDebit("");
+					map.put("" + count, ledgerReportBean);
+					count++;
+				}
+			}
+			sqlString = "SELECT * FROM st_rm_txn_debitNote_master WHERE party_acc_name='" + ledgerName
+					+ "' and STR_TO_DATE(dn_date,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate
+					+ "','%d-%m-%Y') and STR_TO_DATE(dn_date,'%d-%m-%Y') <= STR_TO_DATE('" + toDate + "','%d-%m-%Y')";
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> debitNoteResult = query.list();
+			if (debitNoteResult != null && !debitNoteResult.isEmpty() && debitNoteResult.size() > 0) {
+
+				for (Object[] obj : debitNoteResult) {
+					ledgerReportBean = new LedgerReportBean();
+					ledgerReportBean.setId(count);
+					String date[] = obj[11].toString().split("-");
+					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					ledgerReportBean.setDate(fdate);
+					ledgerReportBean.setSubLedger(obj[3].toString());
+					ledgerReportBean.setTxnType("Debit Note");
+					ledgerReportBean.setVoucherNumber(obj[10].toString());
+					ledgerReportBean.setCredit("");
+					ledgerReportBean.setDebit(obj[9].toString());
+					map.put("" + count, ledgerReportBean);
+					count++;
+				}
+			}
+			sqlString = "SELECT * FROM st_rm_txn_receipt_master WHERE Particulars like '%" + ledgerName
+					+ "%' and STR_TO_DATE(receipt_date,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate
+					+ "','%d-%m-%Y') and STR_TO_DATE(receipt_date,'%d-%m-%Y') <= STR_TO_DATE('" + toDate
+					+ "','%d-%m-%Y')";
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> receiptResult = query.list();
+			if (receiptResult != null && !receiptResult.isEmpty() && receiptResult.size() > 0) {
+
+				for (Object[] obj : receiptResult) {
+					ledgerReportBean = new LedgerReportBean();
+					ledgerReportBean.setId(count);
+					String date[] = obj[13].toString().split("-");
+					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					ledgerReportBean.setDate(fdate);
+					ledgerReportBean.setSubLedger(obj[1].toString());
+					ledgerReportBean.setTxnType("Receipt");
+					ledgerReportBean.setVoucherNumber(obj[12].toString());
+					ledgerReportBean.setCredit(obj[11].toString());
+					ledgerReportBean.setDebit("");
+					map.put("" + count, ledgerReportBean);
+					count++;
+				}
+			}
+			sqlString = "SELECT * FROM st_rm_txn_payment_master WHERE Particulars like '%" + ledgerName
+					+ "%' and STR_TO_DATE(paymentDate,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate
+					+ "','%d-%m-%Y') and STR_TO_DATE(paymentDate,'%d-%m-%Y') <= STR_TO_DATE('" + toDate
+					+ "','%d-%m-%Y')";
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> paymentResult = query.list();
+			if (paymentResult != null && !paymentResult.isEmpty() && paymentResult.size() > 0) {
+
+				for (Object[] obj : paymentResult) {
+					ledgerReportBean = new LedgerReportBean();
+					ledgerReportBean.setId(count);
+					String date[] = obj[12].toString().split("-");
+					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					ledgerReportBean.setDate(fdate);
+					ledgerReportBean.setSubLedger(obj[1].toString());
+					ledgerReportBean.setTxnType("Payment");
+					ledgerReportBean.setVoucherNumber(obj[10].toString());
+					ledgerReportBean.setCredit("");
+					ledgerReportBean.setDebit(obj[9].toString());
+					map.put("" + count, ledgerReportBean);
+					count++;
+				}
+			}
+			sqlString = "SELECT * FROM st_rm_txn_journal_master WHERE STR_TO_DATE(journal_date,'%d-%m-%Y') >= STR_TO_DATE('"
+					+ fromDate + "','%d-%m-%Y') and STR_TO_DATE(journal_date,'%d-%m-%Y') <= STR_TO_DATE('" + toDate
+					+ "','%d-%m-%Y')";
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> journalResult = query.list();
+			if (journalResult != null && !journalResult.isEmpty() && journalResult.size() > 0) {
+
+				for (Object[] obj : journalResult) {
+					
+					String subLedArr[] = obj[3].toString().split(",");
+					String drCr[]  = obj[2].toString().split(",");
+					String debAmt[] = obj[4].toString().split(",");
+					String credAmt[] = obj[5].toString().split(",");
+					for(int i=0;i<subLedArr.length;i++) {
+						String ledger = subLedArr[i].trim();
+						String drcr = drCr[i].trim();
+						if(ledgerName.equals(ledger) && drcr.equalsIgnoreCase("Cr")) {
+							ledgerReportBean = new LedgerReportBean();
+							ledgerReportBean.setId(count);
+							String date[] = obj[8].toString().split("-");
+							String fdate = date[2]+"/"+date[1]+"/"+date[0];
+							ledgerReportBean.setDate(fdate);
+							ledgerReportBean.setSubLedger(ledgerName);
+							ledgerReportBean.setTxnType("Journal");
+							ledgerReportBean.setVoucherNumber(obj[7].toString());
+							ledgerReportBean.setCredit(credAmt[i].trim());
+							ledgerReportBean.setDebit("");
+							map.put("" + count, ledgerReportBean);
+							count++;
+							
+						}
+						else if(ledgerName.equals(ledger) && drcr.equalsIgnoreCase("Dr")) {
+							ledgerReportBean = new LedgerReportBean();
+							ledgerReportBean.setId(count);
+							String date[] = obj[8].toString().split("-");
+							String fdate = date[2]+"/"+date[1]+"/"+date[0];
+							ledgerReportBean.setDate(fdate);
+							ledgerReportBean.setSubLedger(ledgerName);
+							ledgerReportBean.setTxnType("Journal");
+							ledgerReportBean.setVoucherNumber(obj[7].toString());
+							ledgerReportBean.setCredit("");
+							ledgerReportBean.setDebit(debAmt[i].trim());
+							map.put("" + count, ledgerReportBean);
+							count++;
+							
+						}
+					}
+					
+				}
+			}
+			return map;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public Map<String, BillsBean> loadcreditDaysReminderReportResult(String ledgerName, String empName, String fromDate,
+			String toDate) {
+		// TODO Auto-generated method stub
+		try {
+			Map<String, BillsBean> map = new HashMap<String, BillsBean>();
+			BillsBean bean = null;
+			int count = 1;
+			Date today = new Date();
+			SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+			Calendar c = Calendar.getInstance();
+			TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+			c.setTimeZone(tz);
+			String date = sdf.format(today);
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "";
+			SQLQuery query = null;
+			
+			
+			
+				
+				sqlString = "SELECT a.balance,a.date,a.sale_voucher_number,a.party_id,a.blnc_type,b.emp_id FROM st_rm_bill_wise_details_sale AS a INNER JOIN `st_rm_txn_sales_master`  AS b ON a.sale_voucher_number = b.voucher_numbering WHERE a.type_of_ref='Agst Ref' and a.is_used='No' ";
+				if(ledgerName!=null && !ledgerName.isEmpty() && !ledgerName.equals("-1")) {
+					int partyId = getLedgerIdByName(ledgerName);
+					sqlString+=" and a.party_id="+partyId+" ";
+				}
+				if(empName!=null && !empName.isEmpty() && !empName.equals("-1")) {
+					int empId = getEmployeeId(empName);
+					sqlString+=" and b.emp_id="+empId+" ";
+				}
+				if(fromDate!=null && !fromDate.isEmpty()) {
+					
+					sqlString+=" and STR_TO_DATE(a.date,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate+"','%d-%m-%Y') ";
+					
+				}
+				if(toDate!=null && !toDate.isEmpty()) {
+					
+					sqlString+=" and STR_TO_DATE(a.date,'%d-%m-%Y') <= STR_TO_DATE('" + toDate+"','%d-%m-%Y') ";
+					
+				}
+
+				query = session.createSQLQuery(sqlString);
+				List<Object[]> saleBillsList = query.list();
+				if(saleBillsList!=null && !saleBillsList.isEmpty() && saleBillsList.size()>0) {
+					
+					for(Object[] obj:saleBillsList) {
+						int creditPeriod = 0;
+						sqlString = "SELECT credit_period FROM st_rm_credit_limit WHERE ledger_id="+(int)obj[3];
+						query = session.createSQLQuery(sqlString);
+						List<Integer> creditPeriodList = query.list();
+						if(creditPeriodList!=null && !creditPeriodList.isEmpty() && creditPeriodList.size()>0 && !creditPeriodList.get(0).equals("-1"))
+						 creditPeriod = creditPeriodList.get(0);
+						
+						bean = new BillsBean();
+						c.setTime(sdf.parse(obj[1].toString()));
+						c.add(Calendar.DAY_OF_MONTH, creditPeriod);
+						bean.setBillDate(obj[1].toString());
+						bean.setBillDueDate(sdf.format(c.getTime()));
+						bean.setLedgerName(getPartyNameById((int)obj[3]));
+						bean.setBillVoucherNo(obj[2].toString());
+						bean.setEmpName(empName);
+						bean.setBillAmount(obj[0].toString()+" "+obj[4].toString());
+						
+						SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+						df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+						Date _todayDate = df.parse(date);
+						Date _Billdate = df.parse(obj[1].toString());
+						df.applyPattern("yyyy-MM-dd");
+						String _todayDate1 = df.format(_todayDate);
+						String _Billdate1 = df.format(_Billdate);
+						LocalDateTime _dateToday = LocalDateTime.parse(_todayDate1);
+						LocalDateTime _dateBill = LocalDateTime.parse(_Billdate1);
+						Days days = Days.daysBetween(_dateBill, _dateToday);
+						bean.setDueDays(""+days.getDays());
+						count++;
+						map.put(""+count, bean);
+					}
+				}
+			return map;
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	private String getPartyNameById(int i) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("SELECT ledger_name FROM st_rm_acc_ledger_master WHERE ledger_id="+i);
+			List<String> name = query.list();
+			return name.get(0);
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getOpeningBal(String ledgerName, String fromDate) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int ledgerId = getLedgerIdByName(ledgerName);
+			SQLQuery query = session.createSQLQuery("SELECT party_balance_bef_txn FROM st_rm_party_txn_curr_balance_master WHERE id = (SELECT MIN(id) FROM st_rm_party_txn_curr_balance_master WHERE `date`='"+fromDate+"' and party_id="+ledgerId+")");
+			List<String> result = query.list();
+			if(result!=null && !result.isEmpty() && result.size()>0) {
+				return result.get(0);
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
+
+	public String getPartyTaxAmount(String ledgerName, String fromDate, String toDate) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int partyId = getLedgerIdByName(ledgerName);
+			SQLQuery query = session.createSQLQuery("SELECT SUM(tax_amount) FROM st_rm_bill_wise_details_sale WHERE party_id="+partyId+" AND type_of_ref='Agst Ref' AND STR_TO_DATE(`date`,'%d-%m-%Y') >= STR_TO_DATE('"+fromDate+"','%d-%m-%Y') AND  STR_TO_DATE(`date`,'%d-%m-%Y') <= STR_TO_DATE('"+toDate+"','%d-%m-%Y')");
+			List<Double> result = query.list();
+			if(result!=null && !result.isEmpty() && result.size()>0) {
+				return String.valueOf(result.get(0));
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+		return "0";
+	}
+
+	public String getOldSetReminder(String partyId,String vcrId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("SELECT * FROM st_rm_bill_due_alert_scheduling_mgmt WHERE ledger_id="+partyId+" and voucher_no='"+vcrId+"' ");
+			List<Object[]> result = query.list();
+			if(result!=null && !result.isEmpty() && result.size()>0) {
+				for(Object[] obj:result) {
+					return (int)obj[4]+";"+(int)obj[5]+";"+(int)obj[6];	
+				}
+				
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "0;0;0";
+	}
+
+	public void calculateAddInterestAmtOnCurrentBalance() {
+		// TODO Auto-generated method stub
+
+		// TODO Auto-generated method stub
+		try {
+			Logger logger = Logger.getLogger(GameLobbyController.class.getName());
+			logger.info("::::::::::::SCHEDULING START OF TAX REPORT:::::::::::::::::::::::::");
+			Session session = HibernateSessionFactory.getSession();
+			LocalDate date = LocalDate.now();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date.format(formatter);
+			SQLQuery query = session.createSQLQuery(
+					"SELECT * FROM st_rm_ledger_interset_calculation WHERE rate_on IN('Debit Balances Only')");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+				for (Object[] obj : result) {
+					String IstxnByTxn = obj[2].toString();
+					String alwaysOrPastDueDate = obj[9].toString();
+					String calculateFrom = obj[12].toString();
+					if (IstxnByTxn.equalsIgnoreCase("yes")) {
+						logger.info("::::::::::::INSIDE BILL WISE :::::::::::::::::::::::::");
+						String rateMonthOrYear = obj[7].toString();
+						if (rateMonthOrYear.equalsIgnoreCase("Calendar Month")) {
+							logger.info("::::::::::::INSIDE CALENDAR MONTH:::::::::::::::::::::::::");
+							String dueLimit = !obj[10].toString().isEmpty() ? obj[10].toString() : "0";
+							String gracePeriod = !obj[11].toString().isEmpty() ? obj[11].toString() : "0";
+							Integer totalDays = Integer.valueOf(dueLimit) + Integer.valueOf(gracePeriod);
+							if (alwaysOrPastDueDate.equalsIgnoreCase("Always"))
+								totalDays = 0;
+							Integer ledgerId = (int) obj[1];
+
+							SQLQuery query1 = session.createSQLQuery(
+									"SELECT * FROM st_rm_bill_wise_details_sale WHERE type_of_ref IN('Agst Ref') and is_used='No' and party_id="
+											+ ledgerId);
+							List<Object[]> saleBillsresult = query1.list();
+							if (saleBillsresult != null && !saleBillsresult.isEmpty() && saleBillsresult.size() > 0) {
+
+								for (Object[] saleObj : saleBillsresult) {
+									if (isInterestAllow(ledgerId))
+										continue;
+									String saleBillDate = saleObj[5].toString();
+									SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+									Calendar c = Calendar.getInstance();
+									TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+									c.setTimeZone(tz);
+									c.setTime(sdf.parse(saleBillDate));
+									c.add(Calendar.DAY_OF_MONTH, totalDays);
+									String datePeriod = sdf.format(c.getTime());
+
+									if (compareTwoDate(datePeriod + " 00:00", currentDate + " 00:00")) {
+
+										Double taxRate = Double.valueOf(obj[6].toString());
+										int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_MONTH);
+										logger.info("------------------->DAYS IN MONTH IS :" + monthMaxDays);
+										double dayPercentRateCalculate = (taxRate / 365) * (double) monthMaxDays;
+
+										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
+										Double repsaleBillAmount = saleBillAmount;
+										Double billTax = (saleBillAmount * dayPercentRateCalculate) / 100;
+										saleBillAmount = saleBillAmount + billTax;
+										int saleBillId = (int) saleObj[0];
+										logger.info("::::::::::::SALE BILL :::::::::::::::::::::::::" + saleBillId);
+										String saleTaxAmountOld = saleObj[9].toString();
+										Double saleTaxAmountNew = Double.valueOf(saleTaxAmountOld) + billTax;
+
+										SQLQuery updateBillQuery = session.createSQLQuery(
+												"UPDATE st_rm_bill_wise_details_sale SET balance='" + saleBillAmount
+														+ "',tax_amount='" + saleTaxAmountNew + "',tax_updated_on='"
+														+ date.format(formatter) + "' where bill_id=" + saleBillId);
+										updateBillQuery.executeUpdate();
+										SQLQuery queryBln = session.createSQLQuery(
+												"SELECT * from st_rm_purchase_party_master_balance where party_id="
+														+ ledgerId);
+										List<Object[]> blncC = queryBln.list();
+										String partyBlnc = "";
+										String blncTyp = "";
+										for (Object[] o : blncC) {
+											partyBlnc = o[2].toString();
+											blncTyp = o[3].toString();
+										}
+
+										SQLQuery Schquery = session.createSQLQuery(
+												"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
+														+ ledgerId + "," + saleBillId + ",'" + saleObj[8]
+														+ "','success','" + date.format(formatter) + "','"
+														+ repsaleBillAmount + "','" + billTax + "','" + saleBillAmount
+														+ "','" + partyBlnc + "','" + blncTyp + "','Sale')");
+										Schquery.executeUpdate();
+										// sale tax billing end
+
+										logger.info(
+												"::::::::::::SALE BILL WISE TAX SCHEDULING SUCCESS:::::::::::::::::::::::::");
+									}
+								}
+							}
+
+							// purchase tax billing start
+							logger.info(
+									"::::::::::::SCHEDULING START OF TAX REPORT PURCHASING:::::::::::::::::::::::::");
+							SQLQuery query2 = session.createSQLQuery(
+									"SELECT * FROM st_rm_bill_wise_details WHERE type_of_ref IN('Agst Ref') and is_used='No' and party_id="
+											+ ledgerId);
+							List<Object[]> purchaseBillsresult = query2.list();
+							if (purchaseBillsresult != null && !purchaseBillsresult.isEmpty()
+									&& purchaseBillsresult.size() > 0) {
+
+								for (Object[] purchaseObj : purchaseBillsresult) {
+									String purchaseBillDate = purchaseObj[5].toString();
+									if (isInterestAllow(ledgerId))
+										continue;
+									SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+									Calendar c = Calendar.getInstance();
+									TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+									c.setTimeZone(tz);
+									c.setTime(sdf.parse(purchaseBillDate));
+									c.add(Calendar.DAY_OF_MONTH, totalDays);
+									String purchasedatePeriod = sdf.format(c.getTime());
+									if (compareTwoDate(purchasedatePeriod + " 00:00", currentDate + " 00:00")) {
+
+										Double PtaxRate = Double.valueOf(obj[6].toString());
+										Calendar Pc = Calendar.getInstance();
+										int PmonthMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_MONTH);
+										double PdayPercentRateCalculate = (PtaxRate / 365) * (double) PmonthMaxDays;
+
+										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
+										Double reppurchaseBillAmount = purchaseBillAmount;
+										Double purchasebillTax = (purchaseBillAmount * PdayPercentRateCalculate) / 100;
+										purchaseBillAmount = purchaseBillAmount + purchasebillTax;
+										int purchaseBillId = (int) purchaseObj[0];
+										logger.info(
+												"::::::::::::PURCHASE BILL :::::::::::::::::::::::::" + purchaseBillId);
+										String purchaseTaxAmountOld = purchaseObj[9].toString();
+										Double purchaseTaxAmountNew = Double.valueOf(purchaseTaxAmountOld)
+												+ purchasebillTax;
+
+										SQLQuery purchaseupdateBillQuery = session.createSQLQuery(
+												"UPDATE st_rm_bill_wise_details SET balance='" + purchaseBillAmount
+														+ "',tax_amount='" + purchaseTaxAmountNew + "',tax_updated_on='"
+														+ date.format(formatter) + "' where bill_id=" + purchaseBillId);
+										purchaseupdateBillQuery.executeUpdate();
+										SQLQuery queryBln = session.createSQLQuery(
+												"SELECT * from st_rm_purchase_party_master_balance where party_id="
+														+ ledgerId);
+										List<Object[]> blncC = queryBln.list();
+										String partyBlnc = "";
+										String blncTyp = "";
+										for (Object[] o : blncC) {
+											partyBlnc = o[2].toString();
+											blncTyp = o[3].toString();
+										}
+
+										SQLQuery Schquery = session.createSQLQuery(
+												"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
+														+ ledgerId + "," + purchaseBillId + ",'" + purchaseObj[8]
+														+ "','success','" + date.format(formatter) + "','"
+														+ reppurchaseBillAmount + "','" + purchasebillTax + "','"
+														+ purchaseBillAmount + "','" + partyBlnc + "','" + blncTyp
+														+ "','Purchase')");
+										Schquery.executeUpdate();
+
+										logger.info(
+												"::::::::::::SCHEDULING TAX SUCCESS OF PURCHASE :::::::::::::::::::::::::");
+
+									}
+
+								}
+
+							}
+
+						} else if (rateMonthOrYear.equalsIgnoreCase("Calendar Year")) {
+							logger.info("::::::::::::INSIDE CALENDAR Year:::::::::::::::::::::::::");
+							String dueLimit = !obj[10].toString().isEmpty() ? obj[10].toString() : "0";
+							String gracePeriod = !obj[11].toString().isEmpty() ? obj[11].toString() : "0";
+							Integer totalDays = Integer.valueOf(dueLimit) + Integer.valueOf(gracePeriod);
+							if (alwaysOrPastDueDate.equalsIgnoreCase("Always"))
+								totalDays = 0;
+
+							Integer ledgerId = (int) obj[1];
+							SQLQuery query1 = session.createSQLQuery(
+									"SELECT * FROM st_rm_bill_wise_details_sale WHERE type_of_ref IN('Agst Ref') and is_used='No' and party_id="
+											+ ledgerId);
+							List<Object[]> saleBillsresult = query1.list();
+							if (saleBillsresult != null && !saleBillsresult.isEmpty() && saleBillsresult.size() > 0) {
+
+								for (Object[] saleObj : saleBillsresult) {
+									if (isInterestAllow(ledgerId))
+										continue;
+
+									String saleBillDate = saleObj[5].toString();
+									SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+									Calendar c = Calendar.getInstance();
+									TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+									c.setTimeZone(tz);
+
+									c.setTime(sdf.parse(saleBillDate));
+									c.add(Calendar.DAY_OF_MONTH, totalDays);
+									String datePeriod = sdf.format(c.getTime());
+
+									if (compareTwoDate(datePeriod + " 00:00", currentDate + " 00:00")) {
+
+										Double taxRate = Double.valueOf(obj[6].toString());
+										int yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
+										double dayPercentRateCalculate = (taxRate / 365) * (double) yearMaxDays;
+
+										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
+										Double repsaleBillAmount = saleBillAmount;
+										Double billTax = (saleBillAmount * dayPercentRateCalculate) / 100;
+										saleBillAmount = saleBillAmount + billTax;
+										int saleBillId = (int) saleObj[0];
+										logger.info("::::::::::::SALE BILL :::::::::::::::::::::::::" + saleBillId);
+										String saleTaxAmountOld = saleObj[9].toString();
+										Double saleTaxAmountNew = Double.valueOf(saleTaxAmountOld) + billTax;
+
+										SQLQuery updateBillQuery = session.createSQLQuery(
+												"UPDATE st_rm_bill_wise_details_sale SET balance='" + saleBillAmount
+														+ "',tax_amount='" + saleTaxAmountNew + "',tax_updated_on='"
+														+ date.format(formatter) + "' where bill_id=" + saleBillId);
+										updateBillQuery.executeUpdate();
+										SQLQuery queryBln = session.createSQLQuery(
+												"SELECT * from st_rm_purchase_party_master_balance where party_id="
+														+ ledgerId);
+										List<Object[]> blncC = queryBln.list();
+										String partyBlnc = "";
+										String blncTyp = "";
+										for (Object[] o : blncC) {
+											partyBlnc = o[2].toString();
+											blncTyp = o[3].toString();
+										}
+
+										SQLQuery Schquery = session.createSQLQuery(
+												"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
+														+ ledgerId + "," + saleBillId + ",'" + saleObj[8]
+														+ "','success','" + date.format(formatter) + "','"
+														+ repsaleBillAmount + "','" + billTax + "','" + saleBillAmount
+														+ "','" + partyBlnc + "','" + blncTyp + "','Sale')");
+										Schquery.executeUpdate();
+
+										// sale tax billing end
+										logger.info(
+												"::::::::::::SALE BILL WISE TAX SCHEDULING SUCCESS:::::::::::::::::::::::::");
+									}
+								}
+							}
+
+							// purchase tax billing start
+							logger.info(
+									"::::::::::::SCHEDULING START OF TAX REPORT PURCHASING:::::::::::::::::::::::::");
+							SQLQuery query2 = session.createSQLQuery(
+									"SELECT * FROM st_rm_bill_wise_details WHERE type_of_ref IN('Agst Ref') and is_used='No' and party_id="
+											+ ledgerId);
+							List<Object[]> purchaseBillsresult = query2.list();
+							if (purchaseBillsresult != null && !purchaseBillsresult.isEmpty()
+									&& purchaseBillsresult.size() > 0) {
+
+								for (Object[] purchaseObj : purchaseBillsresult) {
+									String purchaseBillDate = purchaseObj[5].toString();
+									if (isInterestAllow(ledgerId))
+										continue;
+
+									SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+									Calendar c = Calendar.getInstance();
+									TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+									c.setTimeZone(tz);
+
+									c.setTime(sdf.parse(purchaseBillDate));
+									c.add(Calendar.DAY_OF_MONTH, totalDays);
+									String purchasedatePeriod = sdf.format(c.getTime());
+									if (compareTwoDate(purchasedatePeriod + " 00:00", currentDate + " 00:00")) {
+
+										Double PtaxRate = Double.valueOf(obj[6].toString());
+										Calendar Pc = Calendar.getInstance();
+										int PyearMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_YEAR);
+										double PdayPercentRateCalculate = (PtaxRate / 365) * (double) PyearMaxDays;
+
+										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
+										Double reppurchaseBillAmount = purchaseBillAmount;
+										Double purchasebillTax = (purchaseBillAmount * PdayPercentRateCalculate) / 100;
+										purchaseBillAmount = purchaseBillAmount + purchasebillTax;
+										int purchaseBillId = (int) purchaseObj[0];
+										logger.info(
+												"::::::::::::PURCHASE BILL :::::::::::::::::::::::::" + purchaseBillId);
+										String purchaseTaxAmountOld = purchaseObj[9].toString();
+										Double purchaseTaxAmountNew = Double.valueOf(purchaseTaxAmountOld)
+												+ purchasebillTax;
+
+										SQLQuery purchaseupdateBillQuery = session.createSQLQuery(
+												"UPDATE st_rm_bill_wise_details SET balance='" + purchaseBillAmount
+														+ "',tax_amount='" + purchaseTaxAmountNew + "',tax_updated_on='"
+														+ date.format(formatter) + "' where bill_id=" + purchaseBillId);
+										purchaseupdateBillQuery.executeUpdate();
+										SQLQuery queryBln = session.createSQLQuery(
+												"SELECT * from st_rm_purchase_party_master_balance where party_id="
+														+ ledgerId);
+										List<Object[]> blncC = queryBln.list();
+										String partyBlnc = "";
+										String blncTyp = "";
+										for (Object[] o : blncC) {
+											partyBlnc = o[2].toString();
+											blncTyp = o[3].toString();
+										}
+
+										SQLQuery Schquery = session.createSQLQuery(
+												"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
+														+ ledgerId + "," + purchaseBillId + ",'" + purchaseObj[8]
+														+ "','success','" + date.format(formatter) + "','"
+														+ reppurchaseBillAmount + "','" + purchasebillTax + "','"
+														+ purchaseBillAmount + "','" + partyBlnc + "','" + blncTyp
+														+ "','Purchase')");
+										Schquery.executeUpdate();
+
+										logger.info(
+												"::::::::::::SCHEDULING TAX SUCCESS OF PURCHASE :::::::::::::::::::::::::");
+
+									}
+
+								}
+
+							}
+
+						}
+					}
+				}
+			}
+			logger.info("::::::::::::SCHEDULING END  :::::::::::::::::::::::::");
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	
+	}
+
+	public String getItemRegularRate(String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("SELECT b.rate,b.super_cash_amt FROM `st_rm_stock_item_godown_opening_blc` AS b INNER JOIN `st_rm_stock_item_master` AS a ON a.st_it_id = b.item_id AND a.item_name='"+itemName+"'");
+			List<Object[]> objResult = query.list();
+			if(objResult!=null && !objResult.isEmpty() && objResult.size()>0) {
+				
+				for(Object[] obj : objResult)
+					return String.valueOf((int)obj[0]);
+				
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
+	public String getItemSuperCashRate(String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("SELECT b.rate,b.super_cash_amt FROM `st_rm_stock_item_godown_opening_blc` AS b INNER JOIN `st_rm_stock_item_master` AS a ON a.st_it_id = b.item_id AND a.item_name='"+itemName+"'");
+			List<Object[]> objResult = query.list();
+			if(objResult!=null && !objResult.isEmpty() && objResult.size()>0) {
+				
+				for(Object[] obj : objResult)
+					return obj[1].toString();
+				
+			}
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return "0";
+	}
+
+	public boolean updatePriceListData(String itemName, String regularPrice, String superCashPrice) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("SELECT st_it_id from st_rm_stock_item_master where item_name='"+itemName+"'");
+			List<Integer> result = query.list();
+			int itemId = result.get(0);
+			SQLQuery query2 = session.createSQLQuery("UPDATE st_rm_stock_item_godown_opening_blc SET rate="+regularPrice+",super_cash_amt='"+superCashPrice+"' where item_id="+itemId);
+			query2.executeUpdate();
+			return true;
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		return false;
 	}
 }
