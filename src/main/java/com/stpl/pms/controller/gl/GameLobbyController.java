@@ -3,20 +3,19 @@ package com.stpl.pms.controller.gl;
 import java.io.FileInputStream;
 import java.sql.Timestamp;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.logging.Logger;
@@ -29,21 +28,22 @@ import org.hibernate.SQLQuery;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.criterion.Restrictions;
-import org.hibernate.engine.query.NativeSQLQueryPlan;
-import org.hibernate.impl.SQLQueryImpl;
 import org.joda.time.Days;
 import org.joda.time.LocalDateTime;
 import org.joda.time.Months;
 import org.joda.time.Years;
-import org.joda.time.format.DateTimeFormat;
 
 import com.stpl.pms.commonJavabeans.AttendanceBean;
+import com.stpl.pms.commonJavabeans.BatteryBean;
 import com.stpl.pms.commonJavabeans.BillsBean;
 import com.stpl.pms.commonJavabeans.EmployeeExpenseBean;
 import com.stpl.pms.commonJavabeans.ExpenseBean;
+import com.stpl.pms.commonJavabeans.InterestBean;
 import com.stpl.pms.commonJavabeans.LedgerReportBean;
 import com.stpl.pms.commonJavabeans.LedgerSecondStepBean;
+import com.stpl.pms.commonJavabeans.ManufacturingBean;
 import com.stpl.pms.commonJavabeans.ReceiptSaleBillMapping;
+import com.stpl.pms.commonJavabeans.SalaryReportBean;
 import com.stpl.pms.commonJavabeans.SaleBillsBean;
 import com.stpl.pms.commonJavabeans.VisitBean;
 import com.stpl.pms.constants.ServerStatusBean;
@@ -53,11 +53,14 @@ import com.stpl.pms.exception.PMSException;
 import com.stpl.pms.hibernate.factory.HibernateSessionFactory;
 import com.stpl.pms.hibernate.mapping.CreateCompany;
 import com.stpl.pms.hibernate.mapping.Itgs;
+import com.stpl.pms.hibernate.mapping.StDmDomainAliasNameMaster;
 import com.stpl.pms.hibernate.mapping.StPortalLobbyMaster;
 import com.stpl.pms.hibernate.mapping.StRmBoAllowedIp;
+import com.stpl.pms.hibernate.mapping.StRmBoUserInfo;
 import com.stpl.pms.hibernate.mapping.StRmBoUserMaster;
 import com.stpl.pms.hibernate.mapping.StRmGameUserMapping;
 import com.stpl.pms.hibernate.mapping.StRmServiceVendorProperties;
+import com.stpl.pms.hibernate.mapping.TransactionApprovalMaster;
 import com.stpl.pms.javabeans.AccountGroupMaster;
 import com.stpl.pms.javabeans.BoVendorGameBean;
 import com.stpl.pms.javabeans.CountryBean;
@@ -69,7 +72,6 @@ import com.stpl.pms.javabeans.StockCatBean;
 import com.stpl.pms.javabeans.StockGroupBean;
 import com.stpl.pms.javabeans.StockItemBean;
 import com.stpl.pms.javabeans.UnitBean;
-import com.stpl.pms.javabeans.UserInfoBean;
 import com.stpl.pms.javabeans.VisitFormBean;
 import com.stpl.pms.javabeans.VoucherBean;
 import com.stpl.pms.struts.common.GetGameListHelper;
@@ -1940,7 +1942,7 @@ public class GameLobbyController {
 			String stItm_stockItemCat, String stItm_stockItemUnit, String stItm_isGst, String stItm_alterGst,
 			String stItm_supplyType, String stItm_dutyRate, String stockItemAlterUnit, String funit, String sunit,
 			String isbatches, String dom, String expDate, String standRate, String costTrack, String itax, String ctax,
-			String stax, String cess) {
+			String stax, String cess, String stockItemWholesaleUnit, String fwunit, String swunit, String hsn_uac) {
 		// TODO Auto-generated method stub
 		String sqlQuery = "";
 		Session session = null;
@@ -1948,10 +1950,11 @@ public class GameLobbyController {
 		try {
 			session = HibernateSessionFactory.getSession();
 			transaction = session.beginTransaction();
-			sqlQuery = "INSERT INTO st_rm_stock_item_unit_master(`is_alternate`,`conversion_from`,`from_unit`,`conversion_to`,`to_unit`,`is_batches`,`date_of_manu`,`use_expiry`,`is_standard`,`cost_track`) values('"
+			sqlQuery = "INSERT INTO st_rm_stock_item_unit_master(`is_alternate`,`conversion_from`,`from_unit`,`conversion_to`,`to_unit`,`is_batches`,`date_of_manu`,`use_expiry`,`is_standard`,`cost_track`,`bulk_unit_name`,`bulk_from_unit`,`bulk_to_unit`,`hsn_sac_code`) values('"
 					+ stockItemAlterUnit + "','" + funit + "','" + stockItemAlterUnit + "','" + sunit + "','"
 					+ stItm_stockItemUnit + "','" + isbatches + "','" + dom + "','" + expDate + "','" + standRate
-					+ "','" + costTrack + "')";
+					+ "','" + costTrack + "','" + stockItemWholesaleUnit + "','" + fwunit + "','" + swunit + "','"
+					+ hsn_uac + "')";
 			SQLQuery unitQuery = session.createSQLQuery(sqlQuery);
 			unitQuery.executeUpdate();
 			int gstId = 0;
@@ -2065,6 +2068,8 @@ public class GameLobbyController {
 					bean.setSupplyType(obj[9].toString());
 					bean.setRateDuty(obj[10].toString());
 					bean.setIsAlternate(obj[12].toString());
+					bean.setHsnCode(obj[26] != null ? obj[26].toString() : "");
+					bean.setBulkUnit(obj[23] != null ? obj[23].toString() : "");
 					if (!obj[12].toString().equalsIgnoreCase("not applicable")) {
 						bean.setConversionFrom(obj[13].toString() + " " + obj[13].toString());
 						bean.setConversionTo(obj[15].toString() + " " + obj[15].toString());
@@ -2595,18 +2600,23 @@ public class GameLobbyController {
 			DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
 			df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
 			String date = df.format(today);
+			int firstLevelUserId = getFirstLevelApproval(user_id);
+			if (firstLevelUserId == 0)
+				firstLevelUserId = parent_id;
+
 			Session session = HibernateSessionFactory.getSession();
 			transaction = session.beginTransaction();
-			String sqlString = "INSERT INTO st_rm_txn_receipt_master_emp(`parent_id`,`emp_id`,`account`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`,`finalBalance`,`receipt_date`) values('"
+			String sqlString = "INSERT INTO st_rm_txn_receipt_master_emp(`parent_id`,`emp_id`,`account`,`Particulars`,`amount`,`txnType`,`bank_name`,`narration`,`finalBalance`,`receipt_date`,`order_status_by`) values('"
 					+ parent_id + "','" + user_id + "','" + account + "','" + particulars + "','" + amount + "','"
-					+ txnType + "','" + bankName + "','" + narration + "','" + totalAmt + "','" + date + "')";
+					+ txnType + "','" + bankName + "','" + narration + "','" + totalAmt + "','" + date + "',"
+					+ firstLevelUserId + ")";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
 			sqlString = "SELECT max(receiptId) from st_rm_txn_receipt_master_emp WHERE emp_id=" + user_id;
 			SQLQuery query2 = session.createSQLQuery(sqlString);
 			List<Integer> saleId = query2.list();
 			sqlString = "INSERT INTO receipt_order_staus_alert(`emp_id`,`order_id`,`status`,`changed_by`) values("
-					+ user_id + ",'" + saleId.get(0) + "','pending'," + parent_id + ")";
+					+ user_id + ",'" + saleId.get(0) + "','pending'," + firstLevelUserId + ")";
 			SQLQuery query3 = session.createSQLQuery(sqlString);
 
 			query3.executeUpdate();
@@ -2769,7 +2779,7 @@ public class GameLobbyController {
 			String hiddenTypeOfRef, String hiddenBillWiseName, String hiddenAmnt, String hiddenBilId,
 			String receiptNoVoucher, String txn_dd_chq_no, String txn_bnkNm, String activeVoucherNumber,
 			String paymentDate, String particularsBlncType, Session session, Transaction transaction,
-			String accountOldBal, String particularsOldBal,String totalAmt) {
+			String accountOldBal, String particularsOldBal, String totalAmt) {
 		// TODO Auto-generated method stub
 		try {
 			int empId = getEmployeeId(employeeUnder);
@@ -3510,18 +3520,22 @@ public class GameLobbyController {
 			DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
 			df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
 			String date = df.format(today);
-			String sqlString = "INSERT INTO st_rm_txn_creditNote_master_emp(`party_acc_name`,`parent_id`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`reference_no`,`finalBalance`,`transport_name`,`creditNote_date`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstn_no`) values('"
-					+ partyAcc + "'," + parent_id + "," + user_id + ",'" + salesAccount + "','" + salesStockItems
-					+ "','" + qty + "','" + rate + "','" + amount + "','" + narration + "','" + referenceNo + "','"
-					+ totalBalance + "','" + tn + "','" + date + "','" + consignee + "','" + dname + "','" + propName
-					+ "','" + contact + "','" + address + "','" + gstnNo + "')";
+			int firstLevelUserId = getFirstLevelApproval(user_id);
+			if (firstLevelUserId == 0)
+				firstLevelUserId = parent_id;
+
+			String sqlString = "INSERT INTO st_rm_txn_creditNote_master_emp(`party_acc_name`,`parent_id`,`emp_id`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`reference_no`,`finalBalance`,`transport_name`,`creditNote_date`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstn_no`,`order_status_by`) values('"
+					+ partyAcc + "'," + parent_id + "," + user_id + ",'" + salesStockItems + "','" + qty + "','" + rate
+					+ "','" + amount + "','" + narration + "','" + referenceNo + "','" + totalBalance + "','" + tn
+					+ "','" + date + "','" + consignee + "','" + dname + "','" + propName + "','" + contact + "','"
+					+ address + "','" + gstnNo + "'," + firstLevelUserId + ")";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
 			sqlString = "SELECT max(cnId) from st_rm_txn_creditNote_master_emp WHERE emp_id=" + user_id;
 			SQLQuery query2 = session.createSQLQuery(sqlString);
 			List<Integer> cId = query2.list();
 			sqlString = "INSERT INTO creditNote_order_staus_alert(`emp_id`,`order_id`,`status`,`changed_by`) values("
-					+ user_id + ",'" + cId.get(0) + "','pending'," + parent_id + ")";
+					+ user_id + ",'" + cId.get(0) + "','pending'," + firstLevelUserId + ")";
 			SQLQuery query3 = session.createSQLQuery(sqlString);
 			query3.executeUpdate();
 			transaction.commit();
@@ -4051,8 +4065,9 @@ public class GameLobbyController {
 			SQLQuery query2 = session.createSQLQuery(sqlString);
 			query2.executeUpdate();
 
-			sqlString = "insert into st_rm_item_qty_godown(`item_id`,`godown_id`,`availableQty`,`unit`,`batch`) values("
-					+ item_id + "," + gd_id + ",'" + itemQty + "','" + stockItemUnit + "','" + itemBatch + "')";
+			sqlString = "insert into st_rm_item_qty_godown(`item_id`,`godown_id`,`availableQty`,`unit`,`batch`,`mfg`,`exp`) values("
+					+ item_id + "," + gd_id + ",'" + itemQty + "','" + stockItemUnit + "','" + itemBatch + "','" + mfg
+					+ "','" + exp + "')";
 			SQLQuery query3 = session.createSQLQuery(sqlString);
 			query3.executeUpdate();
 			return true;
@@ -4346,7 +4361,7 @@ public class GameLobbyController {
 	}
 
 	public boolean insertNewBillSale(String saleDate, String string, String partyAcc, String totalAmt, String vcno,
-			Session session, Transaction transaction) {
+			Session session, Transaction transaction, String superCashEligible, String orderNumber) {
 		// TODO Auto-generated method stub
 		try {
 			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
@@ -4356,8 +4371,109 @@ public class GameLobbyController {
 			for (Object[] obj : partyIds) {
 				partyLedgerId = (int) obj[0];
 			}
-			sqlString = "INSERT INTO st_rm_bill_wise_details_sale(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`,`sale_voucher_number`) values('"
-					+ string + "'," + partyLedgerId + ",'" + totalAmt + "','No','" + saleDate + "','" + vcno + "')";
+			sqlString = "SELECT SUM(balance) from st_rm_bill_wise_details_sale WHERE type_of_ref IN('On Account','Advance') and party_id="
+					+ partyLedgerId + " and is_used='No'";
+			SQLQuery querySum = session.createSQLQuery(sqlString);
+			List<Double> sumAmount = querySum.list();
+			// need to work auto adjust sale amount with on account & advance
+			double amount = 0.0;
+			double saleAmount = Double.valueOf(totalAmt);
+			double tempsaleAmount = Double.valueOf(totalAmt);
+			String is_used = "No";
+			if (sumAmount != null && sumAmount.get(0) != null && sumAmount.get(0) > 0.0) {
+
+				amount = sumAmount.get(0);
+			}
+
+			if (amount > 0) {
+				saleAmount = saleAmount - amount;
+				if (saleAmount < 0) {
+					saleAmount = 0.0;
+					is_used = "Yes";
+				}
+
+				sqlString = "SELECT * from st_rm_bill_wise_details_sale WHERE type_of_ref IN('On Account','Advance') and party_id="
+						+ partyLedgerId + " and is_used='No'";
+				SQLQuery queryDetail = session.createSQLQuery(sqlString);
+				List<Object[]> objDetailResult = queryDetail.list();
+
+				if (objDetailResult != null && !objDetailResult.isEmpty() && objDetailResult.size() > 0
+						&& objDetailResult.get(0) != null) {
+					for (Object[] obj : objDetailResult) {
+						String t_is_used = "No";
+						String t_query_update = "";
+						int billId = (int) obj[0];
+						Double balance = Double.valueOf(obj[3].toString());
+						if (tempsaleAmount == 0.0)
+							break;
+						else if (balance < tempsaleAmount) {
+							tempsaleAmount = tempsaleAmount - balance;
+							balance = 0.0;
+							t_is_used = "Yes";
+							t_query_update = "UPDATE st_rm_bill_wise_details_sale SET balance='" + balance
+									+ "',is_used='" + t_is_used + "' WHERE bill_id=" + billId;
+						} else if (balance > tempsaleAmount) {
+							balance = balance - tempsaleAmount;
+							tempsaleAmount = 0.0;
+							t_is_used = "No";
+							t_query_update = "UPDATE st_rm_bill_wise_details_sale SET balance='" + balance
+									+ "',is_used='" + t_is_used + "' WHERE bill_id=" + billId;
+						} else if (balance == tempsaleAmount) {
+							balance = balance - tempsaleAmount;
+							tempsaleAmount = 0.0;
+							t_is_used = "Yes";
+							t_query_update = "UPDATE st_rm_bill_wise_details_sale SET balance='" + balance
+									+ "',is_used='" + t_is_used + "' WHERE bill_id=" + billId;
+
+						}
+
+						SQLQuery t_query_update_sql = session.createSQLQuery(t_query_update);
+						t_query_update_sql.executeUpdate();
+
+					}
+				}
+				sqlString = "SELECT * FROM st_rm_purchase_party_master_balance WHERE party_id=" + partyLedgerId;
+				SQLQuery balanceQuery = session.createSQLQuery(sqlString);
+				List<Object[]> balanceRes = balanceQuery.list();
+
+				if (balanceRes != null && !balanceRes.isEmpty() && balanceRes.size() > 0) {
+					Double currBal = 0.0;
+					String balanceType = "";
+
+					for (Object[] objBalance : balanceRes) {
+
+						currBal = Double.valueOf(objBalance[2].toString());
+						balanceType = objBalance[3].toString();
+						if (balanceType.equals("Dr")) {
+
+							currBal = (currBal - Double.valueOf(totalAmt)) + saleAmount;
+							if (currBal < 0) {
+								currBal = currBal * (-1);
+								balanceType = "Cr";
+							}
+
+						} else {
+
+							currBal = (currBal + Double.valueOf(totalAmt)) - saleAmount;
+							if (currBal < 0) {
+								currBal = currBal * (-1);
+								balanceType = "Dr";
+							}
+						}
+					}
+					sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + String.valueOf(currBal)
+							+ "',balance_type='" + balanceType + "' WHERE party_id=" + partyLedgerId + "";
+					SQLQuery queryupdateCBal = session.createSQLQuery(sqlString);
+					queryupdateCBal.executeUpdate();
+
+				}
+
+			}
+			if (orderNumber == null || orderNumber.isEmpty() || orderNumber.equals(""))
+				orderNumber = "0";
+			sqlString = "INSERT INTO st_rm_bill_wise_details_sale(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`,`sale_voucher_number`,`superCashBill`,`order_id`) values('"
+					+ string + "'," + partyLedgerId + ",'" + saleAmount + "','" + is_used + "','" + saleDate + "','"
+					+ vcno + "','" + superCashEligible + "'," + orderNumber + ")";
 			SQLQuery query2 = session.createSQLQuery(sqlString);
 			query2.executeUpdate();
 			return true;
@@ -4372,21 +4488,18 @@ public class GameLobbyController {
 			Transaction transaction) {
 		// TODO Auto-generated method stub
 		try {
-			String sqlString = "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
-			SQLQuery query = session.createSQLQuery(sqlString);
-			List<Object[]> partyIds = query.list();
-			int partyLedgerId = 0;
-			for (Object[] obj : partyIds) {
-				partyLedgerId = (int) obj[0];
-			}
-			String append = "";
-			if (hcrdr != null && !hcrdr.isEmpty()) {
-				append = ",balance_type='" + hcrdr + "'";
-			}
-			sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + String.valueOf(currBalance) + "' "
-					+ append + " WHERE party_id=" + partyLedgerId + "";
-			SQLQuery query2 = session.createSQLQuery(sqlString);
-			query2.executeUpdate();
+			/*
+			 * String sqlString =
+			 * "SELECT * from st_rm_acc_ledger_master where ledger_name='" + partyAcc + "'";
+			 * SQLQuery query = session.createSQLQuery(sqlString); List<Object[]> partyIds =
+			 * query.list(); int partyLedgerId = 0; for (Object[] obj : partyIds) {
+			 * partyLedgerId = (int) obj[0]; } String append = ""; if (hcrdr != null &&
+			 * !hcrdr.isEmpty()) { append = ",balance_type='" + hcrdr + "'"; } sqlString =
+			 * "UPDATE st_rm_purchase_party_master_balance SET balance='" +
+			 * String.valueOf(currBalance) + "' " + append + " WHERE party_id=" +
+			 * partyLedgerId + ""; SQLQuery query2 = session.createSQLQuery(sqlString);
+			 * query2.executeUpdate();
+			 */
 
 			return true;
 		} catch (Exception e) {
@@ -4444,10 +4557,11 @@ public class GameLobbyController {
 								String billSqlString = "";
 								if (diff <= 0) {
 									billSqlString = "UPDATE st_rm_bill_wise_details SET balance='"
-											+ String.valueOf(diff) + "',is_used='Yes' WHERE bill_id=" + billId + "";
+											+ String.valueOf(diff) + "',is_used='Yes' WHERE purchase_voucher_number='"
+											+ billId + "'";
 								} else {
 									billSqlString = "UPDATE st_rm_bill_wise_details SET balance='"
-											+ String.valueOf(diff) + "' WHERE bill_id=" + billId + "";
+											+ String.valueOf(diff) + "' WHERE purchase_voucher_number='" + billId + "'";
 
 								}
 								SQLQuery sqlBillQuery = session.createSQLQuery(billSqlString);
@@ -4508,10 +4622,10 @@ public class GameLobbyController {
 							flag = false;
 							if (typeOfRefArr[j].trim().equals("New Ref")) {
 								insertNewBillSale(date.format(formatter), "Agst Ref", tempParticularName,
-										String.valueOf(totalBlnc), journalNoVoucher, session, transaction);
+										String.valueOf(totalBlnc), journalNoVoucher, session, transaction, "no", null);
 							} else if (typeOfRefArr[j].trim().equals("Agst Ref")) {
 								String arr[] = hiddenBillWiseNameArr[j].split(" ");
-								int billId = Integer.valueOf(arr[0].trim());
+								String billId = String.valueOf(arr[0].trim());
 								Double DBbalance = Double.valueOf(arr[2].trim());
 								Double appBalance = Double.valueOf(hiddenAmtArr[j].trim());
 								AgstRefBal = Double.valueOf(hiddenAmtArr[j].trim());
@@ -4519,10 +4633,11 @@ public class GameLobbyController {
 								String billSqlString = "";
 								if (diff <= 0) {
 									billSqlString = "UPDATE st_rm_bill_wise_details_sale SET balance='"
-											+ String.valueOf(diff) + "',is_used='Yes' WHERE bill_id=" + billId + "";
+											+ String.valueOf(diff) + "',is_used='Yes' WHERE sale_voucher_number='"
+											+ billId + "'";
 								} else {
 									billSqlString = "UPDATE st_rm_bill_wise_details_sale SET balance='"
-											+ String.valueOf(diff) + "' WHERE bill_id=" + billId + "";
+											+ String.valueOf(diff) + "' WHERE sale_voucher_number='" + billId + "'";
 
 								}
 								SQLQuery sqlBillQuery = session.createSQLQuery(billSqlString);
@@ -4530,7 +4645,7 @@ public class GameLobbyController {
 								flag = true;
 							} else {
 								insertNewBillSale(date.format(formatter), typeOfRefArr[j], tempParticularName,
-										String.valueOf(totalBlnc), journalNoVoucher, session, transaction);
+										String.valueOf(totalBlnc), journalNoVoucher, session, transaction, "no", null);
 							}
 							String qu = "INSERT INTO st_rm_journal_bill_mapping(`jouVcr`,`billVcr`,`amount`,`type_of_ref`,`bill_type`) values('"
 									+ journalNoVoucher + "','" + hiddenBillWiseNameArr[j].split(" ")[0].trim() + "','"
@@ -5347,7 +5462,7 @@ public class GameLobbyController {
 			if ((rs != null && !rs.isEmpty())) {
 				for (Object[] obj : rs) {
 					int id = (int) obj[0];
-					tempString = tempString + String.valueOf(id) + " " + obj[5].toString() + " " + obj[3].toString()
+					tempString = tempString + obj[8].toString() + " " + obj[5].toString() + " " + obj[3].toString()
 							+ " " + obj[6].toString() + ";";
 				}
 				finalString = tempString;
@@ -5439,6 +5554,27 @@ public class GameLobbyController {
 				response = odo_in + ";" + odo_out + ";" + sel_in + ";" + sel_out;
 				break;
 			}
+			return response;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public String getEmployeeVisitPictureReport(String visitId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT visitor_picture from bo_um_attendance_visit WHERE id=" + visitId + "";
+			SQLQuery query2 = session.createSQLQuery(sqlString);
+			List<String> result = query2.list();
+
+			String response = "";
+			if (result != null && result.size() > 0 && !result.isEmpty() && result.get(0) != null)
+				for (String obj : result) {
+					response = obj;
+					break;
+				}
 			return response;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -5561,8 +5697,8 @@ public class GameLobbyController {
 					color = "<font color='red'><br>(" + obj[12].toString() + " )<br></font>";
 				notification = notification + "<div>" + count + ".)" + "Purchase Request" + " is generated by <b> "
 						+ empName.toUpperCase() + "</b>.   Click <a href='javascript:;' onclick='goToPurchaseOrder("
-						+ (int) obj[0] + ")'>PO-" + (int) obj[3] + "-" + (int) obj[0] + "</a>here to check. " + color
-						+ "\n";
+						+ (int) obj[0] + ")'>PO-" + (int) obj[3] + "-" + (int) obj[0] + "</a> (" + obj[20].toString()
+						+ ") here to check. " + color + "\n";
 				count++;
 			}
 			return notification + "|" + (count - 1);
@@ -5577,7 +5713,7 @@ public class GameLobbyController {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("SELECT * from st_rm_txn_sales_master_emp WHERE parent_id IN("
+			SQLQuery query = session.createSQLQuery("SELECT * from st_rm_txn_sales_master_emp WHERE order_status_by IN("
 					+ userId + ") order by salesId DESC");
 			if (userId == 1)
 				query = session.createSQLQuery("SELECT * from st_rm_txn_sales_master_emp order by salesId DESC");
@@ -5596,8 +5732,8 @@ public class GameLobbyController {
 					color = "<font color='red'><br>(" + obj[12].toString() + " )<br></font>";
 				notification = notification + "<div>" + count + ".)" + "Sale Request" + " is generated by <b> "
 						+ empName.toUpperCase() + "</b>.   Click <a href='javascript:;' onclick='goToSaleOrder("
-						+ (int) obj[0] + ")'>SO-" + (int) obj[3] + "-" + (int) obj[0] + "</a> here to check.  " + color
-						+ "\n";
+						+ (int) obj[0] + ")'>SO-" + (int) obj[3] + "-" + (int) obj[0] + "</a> (" + obj[12].toString()
+						+ ") here to check.  " + color.toUpperCase() + "</div>\n";
 				count++;
 			}
 			return notification + "|" + (count - 1);
@@ -5610,10 +5746,13 @@ public class GameLobbyController {
 
 	public String getAlertsCN(int userId) {
 		// TODO Auto-generated method stub
+		Logger logger = null;
 		try {
+			logger = Logger.getLogger(GameLobbyController.class.getName());
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("SELECT * from st_rm_txn_creditNote_master_emp WHERE parent_id IN("
-					+ userId + ") order by cnId DESC");
+			SQLQuery query = session
+					.createSQLQuery("SELECT * from st_rm_txn_creditNote_master_emp WHERE order_status_by IN(" + userId
+							+ ") order by cnId DESC");
 			if (userId == 1)
 				query = session.createSQLQuery("SELECT * from st_rm_txn_creditNote_master_emp order by cnId DESC");
 
@@ -5622,17 +5761,23 @@ public class GameLobbyController {
 			int count = 1;
 			for (Object[] obj : result) {
 				String empName = getUserNameById((int) obj[3]);
+				String color = "";
+				if (obj[14].toString().equalsIgnoreCase("accepted"))
+					color = "<font color='green'><br>(" + obj[14].toString() + " )<br></font>";
+				else if (obj[14].toString().equalsIgnoreCase("pending"))
+					color = "<font color='blue'><br>(" + obj[14].toString() + " )<br></font>";
+				else
+					color = "<font color='red'><br>(" + obj[14].toString() + " )<br></font>";
 				notification = notification + "<div>" + count + ".)" + "Credit Note Request" + " is generated by <b> "
 						+ empName.toUpperCase() + "</b>.   Click <a href='javascript:;' onclick='goToCN(" + (int) obj[0]
-						+ ")'>CN-" + (int) obj[3] + "-" + (int) obj[0]
-						+ "</a>here to check.     <a href='javascript:;' onclick='deleteNotificationById("
-						+ (int) obj[0] + ")'>X</a> </div>\n";
+						+ ")'>CN-" + (int) obj[3] + "-" + (int) obj[0] + "</a> (" + obj[13].toString()
+						+ ") here to check." + color.toUpperCase() + " </div>\n";
 				count++;
 			}
 			return notification + "|" + (count - 1);
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.info("Error: While fething credit note alert");
 		}
 		return "There is no any notification yet!";
 	}
@@ -5654,7 +5799,7 @@ public class GameLobbyController {
 				notification = notification + "<div>" + count + ".)" + "Debit Note Request" + " is generated by <b> "
 						+ empName.toUpperCase() + "</b>.   Click <a href='javascript:;' onclick='goToDN(" + (int) obj[0]
 						+ ")'>DN-" + (int) obj[3] + "-" + (int) obj[0]
-						+ "</a>here to check.     <a href='javascript:;' onclick='deleteNotificationById("
+						+ "</a> here to check.     <a href='javascript:;' onclick='deleteNotificationById("
 						+ (int) obj[0] + ")'>X</a> </div>\n";
 				count++;
 			}
@@ -5682,9 +5827,9 @@ public class GameLobbyController {
 				String empName = getUserNameById((int) obj[2]);
 				notification = notification + "<div>" + count + ".)" + "Payment Request" + " is generated by <b> "
 						+ empName.toUpperCase() + "</b>.   Click <a href='javascript:;' onclick='goToPMT("
-						+ (int) obj[0] + ")'>PMT-" + (int) obj[2] + "-" + (int) obj[0]
-						+ "</a>here to check.     <a href='javascript:;' onclick='deleteNotificationById("
-						+ (int) obj[0] + ")'>X</a> </div>\n";
+						+ (int) obj[0] + ")'>PMT-" + (int) obj[2] + "-" + (int) obj[0] + "</a> (" + obj[13].toString()
+						+ ") here to check.     <a href='javascript:;' onclick='deleteNotificationById(" + (int) obj[0]
+						+ ")'>X</a> </div>\n";
 				count++;
 			}
 			return notification + "|" + (count - 1);
@@ -5700,8 +5845,9 @@ public class GameLobbyController {
 		try {
 			Session session = HibernateSessionFactory.getSession();
 
-			SQLQuery query = session.createSQLQuery("SELECT * from st_rm_txn_receipt_master_emp WHERE parent_id IN("
-					+ userId + ") order by receiptId DESC");
+			SQLQuery query = session
+					.createSQLQuery("SELECT * from st_rm_txn_receipt_master_emp WHERE order_status_by IN(" + userId
+							+ ") order by receiptId DESC");
 			if (userId == 1)
 				query = session.createSQLQuery("SELECT * from st_rm_txn_receipt_master_emp order by receiptId DESC");
 			List<Object[]> result = query.list();
@@ -5709,11 +5855,17 @@ public class GameLobbyController {
 			int count = 1;
 			for (Object[] obj : result) {
 				String empName = getUserNameById((int) obj[2]);
+				String color = "";
+				if (obj[11].toString().equalsIgnoreCase("accepted"))
+					color = "<font color='green'><br>(" + obj[11].toString() + " )<br></font>";
+				else if (obj[11].toString().equalsIgnoreCase("pending"))
+					color = "<font color='blue'><br>(" + obj[11].toString() + " )<br></font>";
+				else
+					color = "<font color='red'><br>(" + obj[11].toString() + " )<br></font>";
 				notification = notification + "<div>" + count + ".)" + "Receipt Request" + " is generated by <b> "
 						+ empName.toUpperCase() + "</b>.   Click <a href='javascript:;' onclick='goToRCPT("
-						+ (int) obj[0] + ")'>RCPT-" + (int) obj[2] + "-" + (int) obj[0]
-						+ "</a>here to check.     <a href='javascript:;' onclick='deleteNotificationById("
-						+ (int) obj[0] + ")'>X</a> </div>\n";
+						+ (int) obj[0] + ")'>RCPT-" + (int) obj[2] + "-" + (int) obj[0] + "</a> (" + obj[13].toString()
+						+ ")here to check. " + color.toUpperCase() + "</div>\n";
 				count++;
 			}
 			return notification + "|" + (count - 1);
@@ -5803,10 +5955,11 @@ public class GameLobbyController {
 			List<Object[]> result = query.list();
 			String data = "";
 			for (Object[] obj : result) {
+				String rejectedReason = obj[15] != null ? obj[15].toString() : "undefined";
 				data = "" + (int) obj[0] + "|" + (int) obj[1] + "|" + obj[3].toString() + "|" + obj[5].toString() + "|"
 						+ obj[6].toString() + "|" + obj[7].toString() + "|" + obj[8].toString() + "|"
 						+ obj[9].toString() + "|" + obj[10].toString() + "|" + obj[11].toString() + "|"
-						+ obj[13].toString() + "|" + obj[14].toString();
+						+ obj[13].toString() + "|" + obj[14].toString() + "|" + rejectedReason;
 			}
 			return data;
 		} catch (Exception e) {
@@ -5828,18 +5981,22 @@ public class GameLobbyController {
 			DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
 			df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
 			String date = df.format(today);
-			String sqlString = "INSERT INTO st_rm_txn_sales_master_emp(`party_acc_name`,`parent_id`,`emp_id`,`sales_ledger`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`reference_no`,`finalBalance`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstnNo`,`sale_order_date`) values('"
-					+ partyAcc + "'," + parentUserId + "," + userId + ",'" + salesAccount + "','" + salesStockItems
-					+ "','" + qty + "','" + rate + "','" + amount + "','" + narration + "','" + referenceNo + "','"
-					+ finalBal + "','" + consignee + "','" + dname + "','" + propName + "','" + contact + "','"
-					+ address + "','" + gstnNo + "','" + date + "')";
+			int firstLevelUserId = getFirstLevelApproval(userId);
+			if (firstLevelUserId == 0)
+				firstLevelUserId = parentUserId;
+
+			String sqlString = "INSERT INTO st_rm_txn_sales_master_emp(`party_acc_name`,`parent_id`,`emp_id`,`name_item`,`actual_qty`,`rate`,`amount`,`narration`,`finalBalance`,`is_consignee`,`dealer_name`,`prop_name`,`contact`,`address`,`gstnNo`,`sale_order_date`,`order_status_by`) values('"
+					+ partyAcc + "'," + parentUserId + "," + userId + ",'" + salesStockItems + "','" + qty + "','"
+					+ rate + "','" + amount + "','" + narration + "','" + finalBal + "','" + consignee + "','" + dname
+					+ "','" + propName + "','" + contact + "','" + address + "','" + gstnNo + "','" + date + "',"
+					+ firstLevelUserId + ")";
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
 			sqlString = "SELECT max(salesId) from st_rm_txn_sales_master_emp WHERE emp_id=" + userId;
 			SQLQuery query2 = session.createSQLQuery(sqlString);
 			List<Integer> saleId = query2.list();
 			sqlString = "INSERT INTO sale_order_staus_alert(`emp_id`,`order_id`,`status`,`changed_by`) values(" + userId
-					+ ",'" + saleId.get(0) + "','pending'," + parentUserId + ")";
+					+ ",'" + saleId.get(0) + "','pending'," + firstLevelUserId + ")";
 			SQLQuery query3 = session.createSQLQuery(sqlString);
 
 			query3.executeUpdate();
@@ -5927,12 +6084,51 @@ public class GameLobbyController {
 			for (Object[] obj : result) {
 				String status = obj[12] != null ? obj[12].toString() : "pending";
 				String doc = obj[21] != null ? obj[21].toString() : "no image found";
+				String rejectReason = obj[22] != null ? obj[22].toString() : "undefined";
 				data = "" + (int) obj[0] + "|" + obj[1].toString() + "|" + (int) obj[3] + "|" + obj[5].toString() + "|"
 						+ obj[6].toString() + "|" + obj[7].toString() + "|" + obj[8].toString() + "|"
 						+ obj[9].toString() + "|" + obj[11].toString() + "|" + status + "|" + obj[15].toString() + "|"
 						+ obj[16].toString() + "|" + obj[17].toString() + "|" + obj[18].toString() + "|"
-						+ obj[19].toString() + "|" + obj[20].toString() + "|" + doc;
+						+ obj[19].toString() + "|" + obj[20].toString() + "|" + doc + "|" + rejectReason;
 			}
+
+			query = session.createSQLQuery("SELECT * FROM st_rm_txn_sales_master_emp_others WHERE saleId=" + sOId);
+			List<Object[]> resultMore = query.list();
+			if (resultMore != null && resultMore.size() > 0 && !resultMore.isEmpty() && resultMore.get(0) != null) {
+
+				for (Object[] obj : resultMore) {
+					String ddn = obj[2] != null ? obj[2].toString() : "";
+					String transport_name = obj[3] != null ? obj[3].toString() : "";
+					String destination = obj[4] != null ? obj[4].toString() : "";
+					String biit = obj[5] != null ? obj[5].toString() : "";
+					String vehical_no = obj[6] != null ? obj[6].toString() : "";
+					String transport_frieght = obj[7] != null ? obj[7].toString() : "";
+					String local_frieght = obj[8] != null ? obj[8].toString() : "";
+					String load_unload_charge = obj[9] != null ? obj[9].toString() : "";
+					String ddn_doc = obj[10] != null ? obj[10].toString() : "";
+					String billt_doc = obj[11] != null ? obj[11].toString() : "";
+					data = data + "|" + ddn + "|" + transport_name + "|" + destination + "|" + biit + "|" + vehical_no
+							+ "|" + transport_frieght + "|" + local_frieght + "|" + load_unload_charge + "|" + ddn_doc
+							+ "|" + billt_doc;
+					break;
+				}
+			} else {
+				String ddn = "";
+				String transport_name = "";
+				String destination = "";
+				String biit = "";
+				String vehical_no = "";
+				String transport_frieght = "";
+				String local_frieght = "";
+				String load_unload_charge = "";
+				String ddn_doc = "";
+				String billt_doc = "";
+				data = data + "|" + ddn + "|" + transport_name + "|" + destination + "|" + biit + "|" + vehical_no + "|"
+						+ transport_frieght + "|" + local_frieght + "|" + load_unload_charge + "|" + ddn_doc + "|"
+						+ billt_doc;
+
+			}
+
 			return data;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -5948,11 +6144,47 @@ public class GameLobbyController {
 			List<Object[]> result = query.list();
 			String data = "";
 			for (Object[] obj : result) {
+				String status = obj[14] != null ? obj[14].toString() : "pending";
+				String ddnDoc = obj[16] != null ? obj[16].toString() : "no image found";
+				String billtDoc = obj[17] != null ? obj[17].toString() : "no image found";
+				String rejectReason = obj[24] != null ? obj[24].toString() : "undefined";
+
 				data = "" + (int) obj[0] + "|" + obj[1].toString() + "|" + (int) obj[3] + "|" + obj[5].toString() + "|"
 						+ obj[6].toString() + "|" + obj[7].toString() + "|" + obj[8].toString() + "|"
-						+ obj[9].toString() + "|" + obj[11].toString() + "|" + obj[12].toString() + "|"
-						+ obj[13].toString() + "|" + obj[14].toString() + "|" + obj[16] + "|" + obj[17] + "|" + obj[18]
-						+ "|" + obj[19] + "|" + obj[20] + "|" + obj[21] + "|" + obj[22] + "|" + obj[23];
+						+ obj[9].toString() + "|" + obj[11].toString() + "|" + obj[12] + "|" + obj[13].toString() + "|"
+						+ status + "|" + ddnDoc + "|" + billtDoc + "|" + obj[18] + "|" + obj[19] + "|" + obj[20] + "|"
+						+ obj[21] + "|" + obj[22] + "|" + obj[23] + "|" + rejectReason;
+			}
+
+			query = session.createSQLQuery("SELECT * FROM st_rm_txn_credit_master_emp_others WHERE cnId=" + sOId);
+			List<Object[]> resultMore = query.list();
+			if (resultMore != null && resultMore.size() > 0 && !resultMore.isEmpty() && resultMore.get(0) != null) {
+
+				for (Object[] obj : resultMore) {
+					String ddn = obj[2] != null ? obj[2].toString() : "";
+					String destination = obj[3] != null ? obj[3].toString() : "";
+					String biit = obj[4] != null ? obj[4].toString() : "";
+					String vehical_no = obj[5] != null ? obj[5].toString() : "";
+					String transport_frieght = obj[6] != null ? obj[6].toString() : "";
+					String local_frieght = obj[7] != null ? obj[7].toString() : "";
+					String load_unload_charge = obj[8] != null ? obj[8].toString() : "";
+					String deliveryCharge = obj[9] != null ? obj[9].toString() : "";
+					data = data + "|" + ddn + "|" + destination + "|" + biit + "|" + vehical_no + "|"
+							+ transport_frieght + "|" + local_frieght + "|" + load_unload_charge + "|" + deliveryCharge;
+					break;
+				}
+			} else {
+				String ddn = "";
+				String destination = "";
+				String biit = "";
+				String vehical_no = "";
+				String transport_frieght = "";
+				String local_frieght = "";
+				String load_unload_charge = "";
+				String deliveryCharge = "";
+				data = data + "|" + ddn + "|" + destination + "|" + biit + "|" + vehical_no + "|" + transport_frieght
+						+ "|" + local_frieght + "|" + load_unload_charge + "|" + deliveryCharge;
+
 			}
 			return data;
 		} catch (Exception e) {
@@ -6001,6 +6233,38 @@ public class GameLobbyController {
 
 				query = session.createSQLQuery(
 						"select rate from st_rm_stock_item_godown_opening_blc where item_id=" + item_id);
+				List<Integer> res2 = query.list();
+				return String.valueOf(res2.get(0));
+			} else {
+				return "0";
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public String getStandardRate(String itemName, String isSuperCash) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT item_unit_id,st_it_id from st_rm_stock_item_master WHERE item_name='" + itemName + "'");
+			List<Object[]> res = query.list();
+			int item_id = 0;
+			int item_unit_id = 0;
+			for (Object[] obj : res) {
+				item_id = (int) obj[1];
+				item_unit_id = (int) obj[0];
+			}
+
+			query = session.createSQLQuery(
+					"select is_standard from st_rm_stock_item_unit_master where item_unit_id=" + item_unit_id);
+			List<String> res1 = query.list();
+			if (res1.get(0).equals("Yes")) {
+
+				query = session.createSQLQuery(
+						"select super_cash_amt from st_rm_stock_item_godown_opening_blc where item_id=" + item_id);
 				List<Integer> res2 = query.list();
 				return String.valueOf(res2.get(0));
 			} else {
@@ -6141,19 +6405,19 @@ public class GameLobbyController {
 
 			}
 
-			SQLQuery query2 = session.createSQLQuery(
-					"SELECT * from bo_um_ledger_details where ledgerId=" + ledger_id);
+			SQLQuery query2 = session.createSQLQuery("SELECT * from bo_um_ledger_details where ledgerId=" + ledger_id);
 			List<Object[]> objRes = query2.list();
 			if (objRes != null && !objRes.isEmpty() && objRes.size() > 0) {
 				for (Object[] o : objRes) {
 					ledgerCustomBean.setPropName(o[2] != null ? o[2].toString() : "");
 					ledgerCustomBean.setContact(o[10] != null ? o[10].toString() : "");
 					ledgerCustomBean.setEmail(o[15] != null ? o[15].toString() : "");
-					ledgerCustomBean.setAddress(o[5] != null ? o[5].toString() : "");	
+					ledgerCustomBean.setAddress(o[5] != null ? o[5].toString() : "");
 					ledgerCustomBean.setResPerAddr(o[12] != null ? o[12].toString() : "");
 					ledgerCustomBean.setDistrict(o[7] != null ? o[7].toString() : "");
 					ledgerCustomBean.setTehsil(o[8] != null ? o[8].toString() : "");
 					ledgerCustomBean.setPincode(o[9] != null ? o[9].toString() : "");
+					ledgerCustomBean.setGstnNo(o[14] != null ? o[14].toString() : "");
 				}
 
 			}
@@ -6218,43 +6482,53 @@ public class GameLobbyController {
 							+ "',date_of_security_interest='" + ledgerCustomBean.getIntersetStartDate()
 							+ "' WHERE ledger_id=" + ledgerCustomBean.getLedgerId() + " and is_security='Yes'");
 			query.executeUpdate();
-			query = session.createSQLQuery(
-					"UPDATE bo_um_ledger_details SET address='" + ledgerCustomBean.getAddress()+ "',district='" + ledgerCustomBean.getDistrict()
-							+ "',tehsil='"+ledgerCustomBean.getTehsil()+"',pincode='"+ledgerCustomBean.getPincode()+"',resPerAddr='"+ledgerCustomBean.getResPerAddr()+"' WHERE ledgerId=" + ledgerCustomBean.getLedgerId());
+			query = session.createSQLQuery("UPDATE bo_um_ledger_details SET address='" + ledgerCustomBean.getAddress()
+					+ "',district='" + ledgerCustomBean.getDistrict() + "',tehsil='" + ledgerCustomBean.getTehsil()
+					+ "',pincode='" + ledgerCustomBean.getPincode() + "',resPerAddr='"
+					+ ledgerCustomBean.getResPerAddr() + "',contact='" + ledgerCustomBean.getContact() + "',firmGSTN='"
+					+ ledgerCustomBean.getGstnNo() + "' WHERE ledgerId=" + ledgerCustomBean.getLedgerId());
 			query.executeUpdate();
-			
+			query = session.createSQLQuery(
+					"UPDATE bo_um_ledger_details SET customerName='" + ledgerCustomBean.getPropName() + "',firmEmail='"
+							+ ledgerCustomBean.getEmail() + "' WHERE ledgerId=	" + ledgerCustomBean.getLedgerId());
+			query.executeUpdate();
 			String partyTy = getPartyTypeById(ledgerCustomBean.getLedgerId());
 			if (ledgerCustomBean.getoBalanceType().equalsIgnoreCase("Dr")
 					&& partyTy.equalsIgnoreCase("Sundry debtors")) {
-				
-				query = session.createSQLQuery("SELECT * FROM st_rm_bill_wise_details_sale WHERE party_id="+ledgerCustomBean.getLedgerId()+" and sale_voucher_number='JSC/OPENING/BAL'");
+
+				query = session.createSQLQuery("SELECT * FROM st_rm_bill_wise_details_sale WHERE party_id="
+						+ ledgerCustomBean.getLedgerId() + " and sale_voucher_number='JSC/OPENING/BAL'");
 				List<Object[]> checkExistsResult = query.list();
-				if(checkExistsResult!=null && !checkExistsResult.isEmpty() && checkExistsResult.size()>0) {
-					query = session.createSQLQuery("UPDATE st_rm_bill_wise_details_sale SET balance='"+ledgerCustomBean.getoBalance()+"',blnc_type='"+ledgerCustomBean.getoBalanceType()+"',date='"+ledgerCustomBean.getOpeningDate()+"' WHERE party_id="+ledgerCustomBean.getLedgerId()+" and sale_voucher_number='JSC/OPENING/BAL'");
+				if (checkExistsResult != null && !checkExistsResult.isEmpty() && checkExistsResult.size() > 0) {
+					query = session.createSQLQuery("UPDATE st_rm_bill_wise_details_sale SET balance='"
+							+ ledgerCustomBean.getoBalance() + "',blnc_type='" + ledgerCustomBean.getoBalanceType()
+							+ "',date='" + ledgerCustomBean.getOpeningDate() + "' WHERE party_id="
+							+ ledgerCustomBean.getLedgerId() + " and sale_voucher_number='JSC/OPENING/BAL'");
 					query.executeUpdate();
-					String b = ledgerCustomBean.getoBalance()+" "+ledgerCustomBean.getoBalanceType();
-					query = session.createSQLQuery("UPDATE st_rm_party_txn_curr_balance_master SET party_balance_bef_txn='"+b+"',party_balance_aft_txn='"+b+"',date='"+ledgerCustomBean.getOpeningDate()+"' WHERE party_id="+ledgerCustomBean.getLedgerId()+" and voucher_id='JSC/OPENING/BAL'");
+					String b = ledgerCustomBean.getoBalance() + " " + ledgerCustomBean.getoBalanceType();
+					query = session
+							.createSQLQuery("UPDATE st_rm_party_txn_curr_balance_master SET party_balance_bef_txn='" + b
+									+ "',party_balance_aft_txn='" + b + "',date='" + ledgerCustomBean.getOpeningDate()
+									+ "' WHERE party_id=" + ledgerCustomBean.getLedgerId()
+									+ " and voucher_id='JSC/OPENING/BAL'");
 					query.executeUpdate();
-					
-				}
-				else {
+
+				} else {
 					query = session.createSQLQuery(
 							"INSERT INTO st_rm_bill_wise_details_sale(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`,`blnc_type`,`purchase_used`,`sale_voucher_number`,`tax_amount`) values('Agst Ref',"
-									+ ledgerCustomBean.getLedgerId() + ",'" + ledgerCustomBean.getoBalance() + "','No','"
-									+ ledgerCustomBean.getOpeningDate() + "','" + ledgerCustomBean.getoBalanceType()
-									+ "','No','JSC/OPENING/BAL','0')");
+									+ ledgerCustomBean.getLedgerId() + ",'" + ledgerCustomBean.getoBalance()
+									+ "','No','" + ledgerCustomBean.getOpeningDate() + "','"
+									+ ledgerCustomBean.getoBalanceType() + "','No','JSC/OPENING/BAL','0')");
 					query.executeUpdate();
-					String b = ledgerCustomBean.getoBalance()+" "+ledgerCustomBean.getoBalanceType();
+					String b = ledgerCustomBean.getoBalance() + " " + ledgerCustomBean.getoBalanceType();
 					query = session.createSQLQuery(
-					"INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
-					+ ledgerCustomBean.getLedgerId() + ",'" + b + "','"+b+"','"
-					+ ledgerCustomBean.getOpeningDate() + "','OPENING','JSC/OPENING/BAL')");
+							"INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+									+ ledgerCustomBean.getLedgerId() + ",'" + b + "','" + b + "','"
+									+ ledgerCustomBean.getOpeningDate() + "','OPENING','JSC/OPENING/BAL')");
 					query.executeUpdate();
-	
-				}
-				}
 
-			
+				}
+			}
 
 			if (ledgerCustomBean.getCreditLimitEligible().equalsIgnoreCase("No")) {
 				query = session.createSQLQuery("UPDATE st_rm_credit_limit SET credit_limit=-1 WHERE ledger_id="
@@ -6402,8 +6676,8 @@ public class GameLobbyController {
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			SQLQuery query = session.createSQLQuery(
-					"SELECT voucher_numbering FROM st_rm_txn_sales_master  WHERE salesId = (SELECT MAX(salesId) FROM st_rm_txn_sales_master where under_vcr_id="
-							+ activeVoucherNumber + ")");
+					"SELECT voucher_numbering FROM st_rm_txn_sales_master  WHERE LENGTH(voucher_numbering) = (SELECT MAX(LENGTH(voucher_numbering)) FROM st_rm_txn_sales_master where under_vcr_id="
+							+ activeVoucherNumber + ") ORDER BY voucher_numbering DESC LIMIT 1");
 			List<String> res = query.list();
 			if (res != null && !res.isEmpty() && !res.get(0).isEmpty() && res.get(0) != null) {
 				String data = res.get(0);
@@ -6422,8 +6696,8 @@ public class GameLobbyController {
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			SQLQuery query = session.createSQLQuery(
-					"SELECT voucher_numbering FROM st_rm_txn_receipt_master  WHERE receiptId = (SELECT MAX(receiptId) FROM st_rm_txn_receipt_master where under_vcr_id="
-							+ activeVoucherNumber + ")");
+					"SELECT voucher_numbering FROM st_rm_txn_receipt_master  WHERE LENGTH(voucher_numbering) = (SELECT MAX(LENGTH(voucher_numbering)) FROM st_rm_txn_receipt_master WHERE under_vcr_id="
+							+ activeVoucherNumber + ") ORDER BY voucher_numbering DESC LIMIT 1");
 			List<String> res = query.list();
 			if (res != null && !res.isEmpty() && !res.get(0).isEmpty() && res.get(0) != null) {
 				String data = res.get(0);
@@ -6634,7 +6908,7 @@ public class GameLobbyController {
 		return false;
 	}
 
-	public boolean changeStatusSuccess(int salesNo, int userId) {
+	public boolean changeStatusSuccess(int salesNo, int userId, String saleVoucher) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
@@ -6645,6 +6919,34 @@ public class GameLobbyController {
 			SQLQuery query2 = session
 					.createSQLQuery("UPDATE sale_order_staus_alert SET status='accepted' WHERE order_id=" + salesNo);
 			query2.executeUpdate();
+
+			SQLQuery query3 = session.createSQLQuery("UPDATE st_rm_txn_sales_master_emp_others SET txn_sale_voucher='"
+					+ saleVoucher + "' WHERE saleId=" + salesNo);
+			query3.executeUpdate();
+
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean changeStatusSuccessCreditNote(int cnNo, int userId, String cnVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"UPDATE st_rm_txn_creditNote_master_emp SET order_status='accepted',order_status_by=" + userId
+							+ " WHERE cnId=" + cnNo);
+			query.executeUpdate();
+			SQLQuery query2 = session
+					.createSQLQuery("UPDATE creditNote_order_staus_alert SET status='accepted' WHERE order_id=" + cnNo);
+			query2.executeUpdate();
+
+			SQLQuery query3 = session
+					.createSQLQuery("UPDATE st_rm_txn_credit_master_emp_others SET txn_credit_note_voucher='"
+							+ cnVoucher + "' WHERE cnId=" + cnNo);
+			query3.executeUpdate();
 
 			return true;
 		} catch (Exception e) {
@@ -6877,17 +7179,18 @@ public class GameLobbyController {
 					c.add(Calendar.DAY_OF_MONTH, totalPeriod);
 					// Date after adding the days to the given date
 					String dateAftPeriod = df.format(c.getTime());
-					SQLQuery queryChk = session.createSQLQuery("SELECT * FROM temp_old_bill_bulk_schedule_master WHERE voucher_number='"+obj[1].toString()+"'");
+					SQLQuery queryChk = session
+							.createSQLQuery("SELECT * FROM temp_old_bill_bulk_schedule_master WHERE voucher_number='"
+									+ obj[1].toString() + "'");
 					List<Object[]> resultChk = queryChk.list();
-					if(resultChk!=null && !resultChk.isEmpty() && resultChk.size()>0) {
-						continue;	
-					}
-					else {
+					if (resultChk != null && !resultChk.isEmpty() && resultChk.size() > 0) {
+						continue;
+					} else {
 						if (compareTwoDate(dateAftPeriod, date)) {
 							data = data + obj[1].toString() + ";";
 						}
 					}
-					
+
 				}
 			}
 			return data;
@@ -6967,6 +7270,7 @@ public class GameLobbyController {
 
 	public String getPropContact(String partyName) {
 		// TODO Auto-generated method stub
+		Logger logger = Logger.getLogger(GameLobbyController.class.getName());
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			int ledgerId = getLedgerIdByName(partyName);
@@ -6975,9 +7279,9 @@ public class GameLobbyController {
 			List<String> res = query.list();
 			return res.get(0);
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.info("ERROR: unable to get properiter contact......");
 		}
-		return null;
+		return "";
 	}
 
 	public String getPropContact(int ledgerId) {
@@ -7094,6 +7398,7 @@ public class GameLobbyController {
 			int i = 1;
 			for (Object[] obj : res) {
 				visitBean = new VisitBean();
+				visitBean.setVisitUniqueId(String.valueOf((int) obj[0]));
 				visitBean.setAddress(obj[9] != null ? obj[9].toString() : "");
 				visitBean.setComment(obj[13] != null ? obj[13].toString() : "");
 				visitBean.setContact(obj[8] != null ? obj[8].toString() : "");
@@ -7334,7 +7639,7 @@ public class GameLobbyController {
 									if (compareTwoDate(datePeriod + " 00:00", currentDate + " 00:00")) {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
-										taxRate = taxRate*12;
+										taxRate = taxRate * 12;
 										int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_MONTH);
 										logger.info("------------------->DAYS IN MONTH IS :" + monthMaxDays);
 										double dayPercentRateCalculate = (taxRate / 365);
@@ -7363,30 +7668,37 @@ public class GameLobbyController {
 											partyBlnc = o[2].toString();
 											blncTyp = o[3].toString();
 										}
-										if(blncTyp.equals("Dr")) {
+										if (blncTyp.equals("Dr")) {
 											String _partyBlnc = String.valueOf(Double.valueOf(partyBlnc) + billTax);
-											SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+											SQLQuery queryCurBal = session.createSQLQuery(
+													"UPDATE st_rm_purchase_party_master_balance SET balance='"
+															+ _partyBlnc + "' WHERE party_id=" + ledgerId);
 											queryCurBal.executeUpdate();
-										
-										}
-										else if(blncTyp.equals("Cr")) {
-											SQLQuery queryRate = session.createSQLQuery("SELECT rate FROM st_rm_ledger_interset_calculation WHERE rate_on IN('Credit Balances Only') and ledger_id="+ledgerId+" limit 1");
+
+										} else if (blncTyp.equals("Cr")) {
+											SQLQuery queryRate = session.createSQLQuery(
+													"SELECT rate FROM st_rm_ledger_interset_calculation WHERE rate_on IN('Credit Balances Only') and ledger_id="
+															+ ledgerId + " limit 1");
 											List<String> queryRateRes = queryRate.list();
-											if(queryRateRes!=null && !queryRateRes.isEmpty() && queryRateRes.size()>0) {
-												
+											if (queryRateRes != null && !queryRateRes.isEmpty()
+													&& queryRateRes.size() > 0) {
+
 												Double _txRate = Double.valueOf(queryRateRes.get(0));
 												int _yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
-												double _dayPercentRateCalculate = (_txRate / 365) * (double) _yearMaxDays;
-												Double _billTax = (Double.valueOf(partyBlnc) * _dayPercentRateCalculate) / 100;
-												Double _partyBlnc = Double.valueOf(partyBlnc)+_billTax;
-												SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+												double _dayPercentRateCalculate = (_txRate / 365)
+														* (double) _yearMaxDays;
+												Double _billTax = (Double.valueOf(partyBlnc) * _dayPercentRateCalculate)
+														/ 100;
+												Double _partyBlnc = Double.valueOf(partyBlnc) + _billTax;
+												SQLQuery queryCurBal = session.createSQLQuery(
+														"UPDATE st_rm_purchase_party_master_balance SET balance='"
+																+ _partyBlnc + "' WHERE party_id=" + ledgerId);
 												queryCurBal.executeUpdate();
-											
-												
+
 											}
 										}
-										
-											SQLQuery Schquery = session.createSQLQuery(
+
+										SQLQuery Schquery = session.createSQLQuery(
 												"INSERT INTO st_rm_bill_balances_scheduling_report(`party_id`,`bill_id`,`voucher_no`,`scheduling_status`,`scheduling_date`,`bill_balnc`,`tax_blnc`,`final_blnc`,`party_curr_balnc_till`,`blnc_type`,`bill_type`) values("
 														+ ledgerId + "," + saleBillId + ",'" + saleObj[8]
 														+ "','success','" + date.format(formatter) + "','"
@@ -7425,7 +7737,7 @@ public class GameLobbyController {
 									if (compareTwoDate(purchasedatePeriod + " 00:00", currentDate + " 00:00")) {
 
 										Double PtaxRate = Double.valueOf(obj[6].toString());
-										PtaxRate = PtaxRate*12;
+										PtaxRate = PtaxRate * 12;
 										Calendar Pc = Calendar.getInstance();
 										int PmonthMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_MONTH);
 										double PdayPercentRateCalculate = (PtaxRate / 365);
@@ -7534,26 +7846,33 @@ public class GameLobbyController {
 											partyBlnc = o[2].toString();
 											blncTyp = o[3].toString();
 										}
-										if(blncTyp.equals("Dr")) {
+										if (blncTyp.equals("Dr")) {
 											String _partyBlnc = String.valueOf(Double.valueOf(partyBlnc) + billTax);
-											SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+											SQLQuery queryCurBal = session.createSQLQuery(
+													"UPDATE st_rm_purchase_party_master_balance SET balance='"
+															+ _partyBlnc + "' WHERE party_id=" + ledgerId);
 											queryCurBal.executeUpdate();
-										
-										}
-										else if(blncTyp.equals("Cr")) {
-											SQLQuery queryRate = session.createSQLQuery("SELECT rate FROM st_rm_ledger_interset_calculation WHERE rate_on IN('Credit Balances Only') and ledger_id="+ledgerId+" limit 1");
+
+										} else if (blncTyp.equals("Cr")) {
+											SQLQuery queryRate = session.createSQLQuery(
+													"SELECT rate FROM st_rm_ledger_interset_calculation WHERE rate_on IN('Credit Balances Only') and ledger_id="
+															+ ledgerId + " limit 1");
 											List<String> queryRateRes = queryRate.list();
-											if(queryRateRes!=null && !queryRateRes.isEmpty() && queryRateRes.size()>0) {
-												
+											if (queryRateRes != null && !queryRateRes.isEmpty()
+													&& queryRateRes.size() > 0) {
+
 												Double _txRate = Double.valueOf(queryRateRes.get(0));
 												int _yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
-												double _dayPercentRateCalculate = (_txRate / 365) * (double) _yearMaxDays;
-												Double _billTax = (Double.valueOf(partyBlnc) * _dayPercentRateCalculate) / 100;
-												Double _partyBlnc = Double.valueOf(partyBlnc)+_billTax;
-												SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+												double _dayPercentRateCalculate = (_txRate / 365)
+														* (double) _yearMaxDays;
+												Double _billTax = (Double.valueOf(partyBlnc) * _dayPercentRateCalculate)
+														/ 100;
+												Double _partyBlnc = Double.valueOf(partyBlnc) + _billTax;
+												SQLQuery queryCurBal = session.createSQLQuery(
+														"UPDATE st_rm_purchase_party_master_balance SET balance='"
+																+ _partyBlnc + "' WHERE party_id=" + ledgerId);
 												queryCurBal.executeUpdate();
-											
-												
+
 											}
 										}
 										SQLQuery Schquery = session.createSQLQuery(
@@ -8708,6 +9027,29 @@ public class GameLobbyController {
 		return false;
 	}
 
+	public boolean changeAlertStatus(String partyName, String voucherNo) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int partyId = getLedgerIdByName(partyName);
+			SQLQuery query = session.createSQLQuery("DELETE FROM st_rm_bill_due_alert_scheduling_mgmt WHERE ledger_id="
+					+ partyId + " and voucher_no='" + voucherNo + "'");
+			query.executeUpdate();
+			int remindBefDay = 15;
+			int remindAftDay = 300;
+			int remindInterval = 300;
+			SQLQuery query2 = session.createSQLQuery(
+					"INSERT INTO st_rm_bill_due_alert_scheduling_mgmt(`ledger_id`,`voucher_no`,`alert_day_before`,`alert_day_duration`,`alert_interval`) values("
+							+ partyId + ",'" + voucherNo + "'," + remindBefDay + "," + remindAftDay + ","
+							+ remindInterval + ")");
+			query2.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
 	public void runScheduleOverDueBillsSales() {
 		// TODO Auto-generated method stub
 		try {
@@ -8748,7 +9090,7 @@ public class GameLobbyController {
 					c.add(Calendar.DAY_OF_MONTH, billDueLimit);
 					String DueBillDate = sdf.format(c.getTime());
 					sqlString = "SELECT * FROM st_rm_bill_due_alert_scheduling_mgmt where ledger_id=" + partyId
-							+ " and voucher_no='" + vchrNo + "' and bill_id=" + billId;
+							+ " and voucher_no='" + vchrNo + "'";
 					SQLQuery queryString = session.createSQLQuery(sqlString);
 					List<Object[]> rs = queryString.list();
 					if (rs != null && !rs.isEmpty() && rs.size() > 0) {
@@ -9030,49 +9372,45 @@ public class GameLobbyController {
 		}
 	}
 
-	public void setDocumentPathReceipt(int receiptNo, String fileFullPath, int userId,String txnType) {
+	public void setDocumentPathReceipt(int receiptNo, String fileFullPath, int userId, String txnType) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			SQLQuery query = null;
-			
-			if(txnType!=null && txnType.equals("receipt")) {
+
+			if (txnType != null && txnType.equals("receipt")) {
 				query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master SET doc_path='" + fileFullPath
 						+ "' WHERE receiptId=" + receiptNo + " and empId=" + userId);
 				query.executeUpdate();
-				
-			}
-			else {
-				 query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master_emp SET doc_path='" + fileFullPath
-							+ "' WHERE receiptId=" + receiptNo + " and emp_id=" + userId);
-					query.executeUpdate();
-						
-				
+
+			} else {
+				query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master_emp SET doc_path='" + fileFullPath
+						+ "' WHERE receiptId=" + receiptNo + " and emp_id=" + userId);
+				query.executeUpdate();
+
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	public void setDocumentPathPayment(int paymentNo, String fileFullPath, int userId,String txnType) {
+	public void setDocumentPathPayment(int paymentNo, String fileFullPath, int userId, String txnType) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query =null;
-			
-			if(txnType!=null && txnType.equals("payment")) {
+			SQLQuery query = null;
+
+			if (txnType != null && txnType.equals("payment")) {
 				query = session.createSQLQuery("UPDATE st_rm_txn_payment_master SET doc_path='" + fileFullPath
 						+ "' WHERE paymentId=" + paymentNo + " and empId=" + userId);
 				query.executeUpdate();
-					
-				
-			}
-			else {
-				
+
+			} else {
+
 				query = session.createSQLQuery("UPDATE st_rm_txn_payment_master_emp SET doc_path='" + fileFullPath
 						+ "' WHERE paymentId=" + paymentNo + " and emp_id=" + userId);
 				query.executeUpdate();
-			
+
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -9123,6 +9461,24 @@ public class GameLobbyController {
 		return false;
 	}
 
+	public boolean getActiveInterestSMS(String ledgerName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int ledgerId = getLedgerIdByName(ledgerName);
+			SQLQuery query = session.createSQLQuery(
+					"SELECT * FROM st_rm_alert_scheduling_mgmt where ledger_id=" + ledgerId + " and alert_type='SMS'");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null) {
+				return true;
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
 	public boolean changeStatus(String ledgerName, String status) {
 		// TODO Auto-generated method stub
 		try {
@@ -9135,6 +9491,28 @@ public class GameLobbyController {
 			else
 				sqlString = "DELETE FROM st_rm_alert_scheduling_mgmt where ledger_id=" + ledId
 						+ " and alert_type='interest'";
+
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean changeStatusSMS(String ledgerName, String status) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int ledId = getLedgerIdByName(ledgerName);
+			String sqlString = "";
+			if (status.equalsIgnoreCase("start"))
+				sqlString = "INSERT INTO st_rm_alert_scheduling_mgmt(`ledger_id`,`voucher_no`,`bill_id`,`alert_type`) values("
+						+ ledId + ",'0',0,'SMS')";
+			else
+				sqlString = "DELETE FROM st_rm_alert_scheduling_mgmt where ledger_id=" + ledId
+						+ " and alert_type='SMS'";
 
 			SQLQuery query = session.createSQLQuery(sqlString);
 			query.executeUpdate();
@@ -9195,10 +9573,10 @@ public class GameLobbyController {
 									if (compareEqualsDate(datePeriod + " 00:00", currentDate + " 00:00")) {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
-										taxRate = taxRate*12;
+										taxRate = taxRate * 12;
 										int monthMaxDays = c.getActualMaximum(Calendar.DAY_OF_MONTH);
 										logger.info("------------------->DAYS IN MONTH IS :" + monthMaxDays);
-										double dayPercentRateCalculate = (taxRate /365)* (double) totalDays;
+										double dayPercentRateCalculate = (taxRate / 365) * (double) totalDays;
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -9267,8 +9645,8 @@ public class GameLobbyController {
 										Double PtaxRate = Double.valueOf(obj[6].toString());
 										Calendar Pc = Calendar.getInstance();
 										int PmonthMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_MONTH);
-										PtaxRate = PtaxRate *12;
-										double PdayPercentRateCalculate = (PtaxRate / 365)*(double) totalDays;
+										PtaxRate = PtaxRate * 12;
+										double PdayPercentRateCalculate = (PtaxRate / 365) * (double) totalDays;
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -9346,7 +9724,7 @@ public class GameLobbyController {
 
 										Double taxRate = Double.valueOf(obj[6].toString());
 										int yearMaxDays = c.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double dayPercentRateCalculate = (taxRate / 365)*(double) totalDays;
+										double dayPercentRateCalculate = (taxRate / 365) * (double) totalDays;
 
 										Double saleBillAmount = Double.valueOf(saleObj[3].toString());
 										Double repsaleBillAmount = saleBillAmount;
@@ -9417,7 +9795,7 @@ public class GameLobbyController {
 										Double PtaxRate = Double.valueOf(obj[6].toString());
 										Calendar Pc = Calendar.getInstance();
 										int PyearMaxDays = Pc.getActualMaximum(Calendar.DAY_OF_YEAR);
-										double PdayPercentRateCalculate = (PtaxRate /365)* (double) totalDays;
+										double PdayPercentRateCalculate = (PtaxRate / 365) * (double) totalDays;
 
 										Double purchaseBillAmount = Double.valueOf(purchaseObj[3].toString());
 										Double reppurchaseBillAmount = purchaseBillAmount;
@@ -9522,6 +9900,7 @@ public class GameLobbyController {
 							bean.setBillVoucherNo(obj[10].toString());
 							bean.setBillUsed(obj[33].toString());
 							bean.setTypeOfRef(obj[30].toString());
+							bean.setActualBillAmount(obj[9] != null ? obj[9].toString() : "0");
 							bean.setBillAmount(obj[32].toString() + " " + obj[35].toString());
 							map.put("" + i, bean);
 							i++;
@@ -9566,6 +9945,7 @@ public class GameLobbyController {
 							bean.setBillUsed(obj[31].toString());
 							bean.setTypeOfRef(obj[28].toString());
 							bean.setBillAmount(obj[30].toString() + " " + obj[33].toString());
+							bean.setActualBillAmount(obj[9] != null ? obj[9].toString() : "0");
 							map.put("" + i, bean);
 							i++;
 						}
@@ -9577,7 +9957,7 @@ public class GameLobbyController {
 					tableName = "SELECT * FROM st_rm_txn_receipt_master as a WHERE under_vcr_id>=0 ";
 					if (!employeeName.equals("-1")) {
 						int empId = getEmployeeId(employeeName);
-						tableName += " and a.emp_id=" + empId + " ";
+						tableName += " and a.empId=" + empId + " ";
 					}
 					if (ledgerName != null && !ledgerName.equals("-1")) {
 						tableName += " and a.Particulars like '%" + ledgerName + "%' ";
@@ -9616,6 +9996,7 @@ public class GameLobbyController {
 							bean.setBillVoucherNo(obj[12].toString());
 							bean.setBillUsed("-");
 							bean.setTypeOfRef(vcrSuffix);
+							bean.setActualBillAmount(obj[5].toString().split(",")[0]);
 							bean.setBillAmount(obj[5].toString().split(",")[0]);
 							map.put("" + i, bean);
 							i++;
@@ -9660,6 +10041,7 @@ public class GameLobbyController {
 							bean.setBillVoucherNo(obj[10].toString());
 							bean.setBillUsed("-");
 							bean.setTypeOfRef("-");
+							bean.setActualBillAmount(obj[9] != null ? obj[9].toString() : "0");
 							bean.setBillAmount(obj[9].toString());
 							map.put("" + i, bean);
 							i++;
@@ -9695,8 +10077,16 @@ public class GameLobbyController {
 						int i = 1;
 						for (Object[] obj : objTes) {
 							bean = new BillsBean();
+							String CrDr = obj[2].toString().split(",")[0];
+							String[] DrLedger = obj[3].toString().split(",");
+							String lName = "";
+							if (CrDr.equalsIgnoreCase("Dr")) {
+								lName = DrLedger[0].trim();
+							} else {
+								lName = DrLedger[1].trim();
+							}
 							bean.setLedgerName(ledgerName.equals("-1") ? "-" : ledgerName);
-							bean.setSubLedger("-");
+							bean.setSubLedger(lName);
 							bean.setTxnType(txnType);
 							String[] dateArr = obj[8].toString().split("-");
 							String date = dateArr[2] + "/" + dateArr[1] + "/" + dateArr[0];
@@ -9711,6 +10101,7 @@ public class GameLobbyController {
 									d = d + Double.valueOf(ar[p].trim());
 							}
 							bean.setBillAmount(String.valueOf(d));
+							bean.setActualBillAmount(String.valueOf(d));
 							map.put("" + i, bean);
 							i++;
 						}
@@ -9746,6 +10137,7 @@ public class GameLobbyController {
 						bean.setBillUsed("-");
 						bean.setTypeOfRef("-");
 						bean.setBillAmount(obj[9].toString());
+						bean.setActualBillAmount("0.0");
 						map.put("" + j, bean);
 						j++;
 					}
@@ -9760,6 +10152,7 @@ public class GameLobbyController {
 						bean.setBillVoucherNo(obj[10].toString());
 						bean.setBillUsed("-");
 						bean.setTypeOfRef("-");
+						bean.setActualBillAmount("0.0");
 						bean.setBillAmount(obj[9].toString());
 						map.put("" + j, bean);
 						j++;
@@ -9774,6 +10167,7 @@ public class GameLobbyController {
 						bean.setBillDate(obj[13].toString());
 						bean.setBillVoucherNo(obj[12].toString());
 						bean.setBillUsed("-");
+						bean.setActualBillAmount("0.0");
 						bean.setTypeOfRef("-");
 						bean.setBillAmount(obj[5].toString().split(",")[0]);
 						map.put("" + j, bean);
@@ -9789,6 +10183,7 @@ public class GameLobbyController {
 						bean.setBillDate(obj[11].toString());
 						bean.setBillVoucherNo(obj[10].toString());
 						bean.setBillUsed("-");
+						bean.setActualBillAmount("0.0");
 						bean.setTypeOfRef("-");
 						bean.setBillAmount(obj[9].toString());
 						map.put("" + j, bean);
@@ -9804,14 +10199,238 @@ public class GameLobbyController {
 		return null;
 	}
 
-	public boolean deleteBill(String txnType, String voucherNo) {
+	public boolean deleteBill(String txnType, String voucherNo, String ledgerName) {
 		// TODO Auto-generated method stub
 		Transaction transaction = null;
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			transaction = session.beginTransaction();
 			String sqlString = "";
-			if (txnType.equalsIgnoreCase("sales")) {
+			if (txnType.equalsIgnoreCase("receipt")) {
+
+				sqlString = "SELECT * FROM st_rm_receipt_sale_bill_mapping WHERE receiptVcr='" + voucherNo + "'";
+				SQLQuery query = session.createSQLQuery(sqlString);
+				List<Object[]> result = query.list();
+				if (result != null && result.size() > 0 && !result.isEmpty()) {
+
+					for (Object[] obj : result) {
+
+						String saleVcrNumber = obj[2].toString();
+						String amount = obj[3].toString();
+						String type = obj[4].toString();
+						if (type.equalsIgnoreCase("Agst Ref")) {
+
+							sqlString = "SELECT * FROM st_rm_bill_wise_details_sale WHERE sale_voucher_number='"
+									+ saleVcrNumber + "'";
+							query = session.createSQLQuery(sqlString);
+							List<Object[]> saleResult = query.list();
+							if (saleResult != null && saleResult.size() > 0 && !saleResult.isEmpty()) {
+								for (Object[] obj1 : saleResult) {
+									String billAmount = obj1[3].toString();
+									int partyId = (int) obj1[2];
+									Double d_billAmount = Double.valueOf(billAmount) + Double.valueOf(amount);
+									billAmount = String.format("%.2f", d_billAmount);
+									sqlString = "UPDATE st_rm_bill_wise_details_sale SET balance='" + billAmount
+											+ "',is_used='No',purchase_used='No' WHERE sale_voucher_number='"
+											+ saleVcrNumber + "'";
+									query = session.createSQLQuery(sqlString);
+									query.executeUpdate();
+
+									sqlString = "SELECT * FROM st_rm_purchase_party_master_balance WHERE party_id="
+											+ partyId;
+									query = session.createSQLQuery(sqlString);
+									List<Object[]> balanceResult = query.list();
+
+									if (balanceResult != null && balanceResult.size() > 0 && !balanceResult.isEmpty()) {
+										for (Object[] obj2 : balanceResult) {
+											String balanceType = obj2[3].toString();
+											String currBal = obj2[2].toString();
+											if (balanceType.equalsIgnoreCase("Dr")) {
+
+												Double d_currBal = Double.valueOf(currBal) + Double.valueOf(amount);
+												currBal = String.format("%.2f", d_currBal);
+												sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='"
+														+ currBal + "' WHERE party_id=" + partyId;
+												query = session.createSQLQuery(sqlString);
+												query.executeUpdate();
+											} else {
+												Double d_currBal = Double.valueOf(currBal) - Double.valueOf(amount);
+												String balType = "Cr";
+												if (d_currBal < 0) {
+													d_currBal = d_currBal * (-1);
+													balType = "Dr";
+												}
+												currBal = String.format("%.2f", d_currBal);
+												sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='"
+														+ currBal + "',balance_type='" + balType + "' WHERE party_id="
+														+ partyId;
+												query = session.createSQLQuery(sqlString);
+												query.executeUpdate();
+
+											}
+										}
+
+									}
+								}
+
+							}
+							// this else condition if bill not found or deleted when sale delete operation
+							// happened
+							else {
+								String tor = "On Account";
+								int partyId = getLedgerIdByName(ledgerName);
+								String BType = "Cr";
+								String isUsed = "No";
+								LocalDate date = LocalDate.now();
+								DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+								String currentDate = date.format(formatter);
+								Long time = System.currentTimeMillis();
+								sqlString = "INSERT INTO st_rm_bill_wise_details_sale(`type_of_ref`,`party_id`,`balance`,`is_used`,`date`,`blnc_type`,`purchase_used`,`sale_voucher_number`) values('"
+										+ tor + "'," + partyId + ",'" + amount + "','" + isUsed + "','" + currentDate
+										+ "','" + BType + "','" + isUsed + "','" + time + "')";
+								query = session.createSQLQuery(sqlString);
+								query.executeUpdate();
+
+								sqlString = "SELECT * FROM st_rm_purchase_party_master_balance WHERE party_id="
+										+ partyId;
+								query = session.createSQLQuery(sqlString);
+								List<Object[]> balanceResult = query.list();
+
+								if (balanceResult != null && balanceResult.size() > 0 && !balanceResult.isEmpty()) {
+									for (Object[] obj2 : balanceResult) {
+										String balanceType = obj2[3].toString();
+										String currBal = obj2[2].toString();
+										if (balanceType.equalsIgnoreCase("Dr")) {
+
+											Double d_currBal = Double.valueOf(currBal) + Double.valueOf(amount);
+											currBal = String.format("%.2f", d_currBal);
+											sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='"
+													+ currBal + "' WHERE party_id=" + partyId;
+											query = session.createSQLQuery(sqlString);
+											query.executeUpdate();
+										} else {
+											Double d_currBal = Double.valueOf(currBal) - Double.valueOf(amount);
+											String balType = "Cr";
+											if (d_currBal < 0) {
+												d_currBal = d_currBal * (-1);
+												balType = "Dr";
+											}
+											currBal = String.format("%.2f", d_currBal);
+											sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='"
+													+ currBal + "',balance_type='" + balType + "' WHERE party_id="
+													+ partyId;
+											query = session.createSQLQuery(sqlString);
+											query.executeUpdate();
+
+										}
+									}
+
+								}
+
+							}
+
+						}
+
+						else {
+
+							sqlString = "delete from st_rm_bill_wise_details_sale where type_of_ref='" + type
+									+ "' and sale_voucher_number='" + saleVcrNumber + "'";
+							query = session.createSQLQuery(sqlString);
+							query.executeUpdate();
+							int partyId = getLedgerIdByName(ledgerName);
+							sqlString = "SELECT * FROM st_rm_purchase_party_master_balance WHERE party_id=" + partyId;
+							query = session.createSQLQuery(sqlString);
+							List<Object[]> balanceResult = query.list();
+
+							if (balanceResult != null && balanceResult.size() > 0 && !balanceResult.isEmpty()) {
+								for (Object[] obj2 : balanceResult) {
+									String balanceType = obj2[3].toString();
+									String currBal = obj2[2].toString();
+									if (balanceType.equalsIgnoreCase("Dr")) {
+
+										Double d_currBal = Double.valueOf(currBal) + Double.valueOf(amount);
+										currBal = String.format("%.2f", d_currBal);
+										sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + currBal
+												+ "' WHERE party_id=" + partyId;
+										query = session.createSQLQuery(sqlString);
+										query.executeUpdate();
+									} else {
+										Double d_currBal = Double.valueOf(currBal) - Double.valueOf(amount);
+										String balType = "Cr";
+										if (d_currBal < 0) {
+											d_currBal = d_currBal * (-1);
+											balType = "Dr";
+										}
+										currBal = String.format("%.2f", d_currBal);
+										sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + currBal
+												+ "',balance_type='" + balType + "' WHERE party_id=" + partyId;
+										query = session.createSQLQuery(sqlString);
+										query.executeUpdate();
+
+									}
+								}
+
+							}
+
+						}
+					}
+				}
+
+				sqlString = "SELECT * from st_rm_txn_receipt_master WHERE voucher_numbering='" + voucherNo + "'";
+				query = session.createSQLQuery(sqlString);
+				List<Object[]> rcptResult = query.list();
+				if (rcptResult != null && rcptResult.size() > 0) {
+
+					for (Object[] o : rcptResult) {
+
+						String bankName = o[1].toString();
+						String amt = o[11].toString();
+						int bankLedId = getLedgerIdByName(bankName);
+						sqlString = "SELECT * FROM st_rm_purchase_party_master_balance WHERE party_id=" + bankLedId;
+						query = session.createSQLQuery(sqlString);
+						List<Object[]> balanceResult = query.list();
+
+						if (balanceResult != null && balanceResult.size() > 0 && !balanceResult.isEmpty()) {
+							for (Object[] obj2 : balanceResult) {
+								String balanceType = obj2[3].toString();
+								String currBal = obj2[2].toString();
+								if (balanceType.equalsIgnoreCase("Cr")) {
+
+									Double d_currBal = Double.valueOf(currBal) + Double.valueOf(amt);
+									currBal = String.format("%.2f", d_currBal);
+									sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + currBal
+											+ "' WHERE party_id=" + bankLedId;
+									query = session.createSQLQuery(sqlString);
+									query.executeUpdate();
+								} else {
+									Double d_currBal = Double.valueOf(currBal) - Double.valueOf(amt);
+									String balType = "Dr";
+									if (d_currBal < 0) {
+										d_currBal = d_currBal * (-1);
+										balType = "Cr";
+									}
+									currBal = String.format("%.2f", d_currBal);
+									sqlString = "UPDATE st_rm_purchase_party_master_balance SET balance='" + currBal
+											+ "',balance_type='" + balType + "' WHERE party_id=" + bankLedId;
+									query = session.createSQLQuery(sqlString);
+									query.executeUpdate();
+
+								}
+							}
+
+						}
+
+					}
+				}
+				sqlString = "DELETE FROM st_rm_receipt_sale_bill_mapping WHERE receiptVcr='" + voucherNo + "'";
+				query = session.createSQLQuery(sqlString);
+				query.executeUpdate();
+
+				sqlString = "DELETE FROM st_rm_txn_receipt_master WHERE voucher_numbering='" + voucherNo + "'";
+				query = session.createSQLQuery(sqlString);
+				query.executeUpdate();
+
+			} else if (txnType.equalsIgnoreCase("sales")) {
 
 				sqlString = "SELECT * FROM st_rm_txn_sales_master WHERE voucher_numbering='" + voucherNo + "'";
 				SQLQuery query = session.createSQLQuery(sqlString);
@@ -9848,9 +10467,9 @@ public class GameLobbyController {
 							String availableQty = QtyRes.get(0);
 							Double finalAvailableQty = 0.0;
 							if (Double.valueOf(availableQty) < 0) {
-								finalAvailableQty = Double.valueOf(availableQty) + Double.valueOf(qtyArr[i].trim());
-							} else
 								finalAvailableQty = Double.valueOf(availableQty) - Double.valueOf(qtyArr[i].trim());
+							} else
+								finalAvailableQty = Double.valueOf(availableQty) + Double.valueOf(qtyArr[i].trim());
 
 							sqlString = "UPDATE st_rm_item_qty_godown SET availableQty='" + finalAvailableQty
 									+ "' WHERE godown_id=" + godownId + " and item_id=" + itemId + "" + suffix;
@@ -9892,6 +10511,12 @@ public class GameLobbyController {
 						sqlString = "DELETE FROM st_rm_txn_sales_master WHERE voucher_numbering='" + voucherNo + "'";
 						query = session.createSQLQuery(sqlString);
 						query.executeUpdate();
+
+						sqlString = "DELETE FROM st_rm_party_txn_curr_balance_master WHERE voucher_id='" + voucherNo
+								+ "'";
+						query = session.createSQLQuery(sqlString);
+						query.executeUpdate();
+
 					}
 				}
 
@@ -10033,26 +10658,26 @@ public class GameLobbyController {
 		return null;
 	}
 
-	public void setDocumentPathCreditNote(int cnNo, String fileFullPathDD, String fileFullPathTB, int userId,String txnType) {
+	public void setDocumentPathCreditNote(int cnNo, String fileFullPathDD, String fileFullPathTB, int userId,
+			String txnType) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			String sqlString = "";
-			if(txnType!=null && txnType.equalsIgnoreCase("creditNote")) {
-				 sqlString = "UPDATE st_rm_txn_creditNote_master SET dispatch_doc='" + fileFullPathDD
-							+ "', billt_doc='" + fileFullPathTB + "' where emp_id=" + userId + " and cnId=" + cnNo;
-					SQLQuery query = session.createSQLQuery(sqlString);
-					query.executeUpdate();
-				
+			if (txnType != null && txnType.equalsIgnoreCase("creditNote")) {
+				sqlString = "UPDATE st_rm_txn_creditNote_master SET dispatch_doc='" + fileFullPathDD + "', billt_doc='"
+						+ fileFullPathTB + "' where emp_id=" + userId + " and cnId=" + cnNo;
+				SQLQuery query = session.createSQLQuery(sqlString);
+				query.executeUpdate();
+
+			} else {
+
+				sqlString = "UPDATE st_rm_txn_creditNote_master_emp SET dispatch_doc='" + fileFullPathDD
+						+ "', billt_doc='" + fileFullPathTB + "' where emp_id=" + userId + " and cnId=" + cnNo;
+				SQLQuery query = session.createSQLQuery(sqlString);
+				query.executeUpdate();
 			}
-			else {
-				
-				 sqlString = "UPDATE st_rm_txn_creditNote_master_emp SET dispatch_doc='" + fileFullPathDD
-							+ "', billt_doc='" + fileFullPathTB + "' where emp_id=" + userId + " and cnId=" + cnNo;
-					SQLQuery query = session.createSQLQuery(sqlString);
-					query.executeUpdate();
-			}
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -10135,43 +10760,45 @@ public class GameLobbyController {
 								+ " and sale_voucher_number='" + voucherArr[i].trim() + "'";
 						SQLQuery query1 = session.createSQLQuery(sqlString);
 						query1.executeUpdate();
-						sqlString = "SELECT * from st_rm_purchase_party_master_balance where party_id="+partyId;
+						sqlString = "SELECT * from st_rm_purchase_party_master_balance where party_id=" + partyId;
 						SQLQuery query2 = session.createSQLQuery(sqlString);
 						List<Object[]> balancRes = query2.list();
 						String partyBlnc = "";
 						String blncTyp = "";
-						if(balancRes!=null && !balancRes.isEmpty() && balancRes.size()>0) {
+						if (balancRes != null && !balancRes.isEmpty() && balancRes.size() > 0) {
 							for (Object[] o : balancRes) {
 								partyBlnc = o[2].toString();
 								blncTyp = o[3].toString();
 							}
-							
-							
+
 						}
-						
-						if(blncTyp.equals("Dr")) {
+
+						if (blncTyp.equals("Dr")) {
 							String _partyBlnc = String.valueOf(Double.valueOf(partyBlnc) + interestCalc);
-							SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"' WHERE party_id="+ledgerId);
+							SQLQuery queryCurBal = session
+									.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"
+											+ _partyBlnc + "' WHERE party_id=" + ledgerId);
 							queryCurBal.executeUpdate();
-						
-						}
-						else {
+
+						} else {
 							Double _partyBlnc = Double.valueOf(partyBlnc) - interestCalc;
-							if(_partyBlnc<0) {
-								_partyBlnc = _partyBlnc*(-1);
-								blncTyp ="Dr";
+							if (_partyBlnc < 0) {
+								_partyBlnc = _partyBlnc * (-1);
+								blncTyp = "Dr";
+							} else {
+								blncTyp = "Cr";
 							}
-							else {
-								blncTyp ="Cr";
-							}
-							SQLQuery queryCurBal = session.createSQLQuery("UPDATE st_rm_purchase_party_master_balance SET balance='"+_partyBlnc+"',balance_type='"+blncTyp+"' WHERE party_id="+ledgerId);
+							SQLQuery queryCurBal = session.createSQLQuery(
+									"UPDATE st_rm_purchase_party_master_balance SET balance='" + _partyBlnc
+											+ "',balance_type='" + blncTyp + "' WHERE party_id=" + ledgerId);
 							queryCurBal.executeUpdate();
 						}
-						
-						
-						SQLQuery queryLast = session.createSQLQuery("INSERT INTO temp_old_bill_bulk_schedule_master(`voucher_number`) values('"+voucherArr[i].trim()+"')");
+
+						SQLQuery queryLast = session.createSQLQuery(
+								"INSERT INTO temp_old_bill_bulk_schedule_master(`voucher_number`) values('"
+										+ voucherArr[i].trim() + "')");
 						queryLast.executeUpdate();
-						
+
 					}
 
 				}
@@ -10203,9 +10830,15 @@ public class GameLobbyController {
 					ledgerReportBean = new LedgerReportBean();
 					ledgerReportBean.setId(count);
 					String date[] = obj[17].toString().split("-");
-					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					String fdate = date[2] + "/" + date[1] + "/" + date[0];
 					ledgerReportBean.setDate(fdate);
-					ledgerReportBean.setSubLedger(obj[3].toString());
+					sqlString = "SELECT superCashBill from st_rm_bill_wise_details_sale WHERE sale_voucher_number='"
+							+ obj[10].toString() + "'";
+					List<String> isSuperCashResult = session.createSQLQuery(sqlString).list();
+					if (isSuperCashResult.get(0).equalsIgnoreCase("yes"))
+						ledgerReportBean.setSubLedger(obj[3].toString() + " (supercash)");
+					else
+						ledgerReportBean.setSubLedger(obj[3].toString());
 					ledgerReportBean.setTxnType("SALE");
 					ledgerReportBean.setVoucherNumber(obj[10].toString());
 					ledgerReportBean.setCredit("");
@@ -10226,7 +10859,7 @@ public class GameLobbyController {
 					ledgerReportBean = new LedgerReportBean();
 					ledgerReportBean.setId(count);
 					String date[] = obj[17].toString().split("-");
-					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					String fdate = date[2] + "/" + date[1] + "/" + date[0];
 					ledgerReportBean.setDate(fdate);
 					ledgerReportBean.setSubLedger(obj[3].toString());
 					ledgerReportBean.setTxnType("PURCHASE");
@@ -10248,7 +10881,7 @@ public class GameLobbyController {
 					ledgerReportBean = new LedgerReportBean();
 					ledgerReportBean.setId(count);
 					String date[] = obj[11].toString().split("-");
-					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					String fdate = date[2] + "/" + date[1] + "/" + date[0];
 					ledgerReportBean.setDate(fdate);
 					ledgerReportBean.setSubLedger(obj[3].toString());
 					ledgerReportBean.setTxnType("Credit Note");
@@ -10270,7 +10903,7 @@ public class GameLobbyController {
 					ledgerReportBean = new LedgerReportBean();
 					ledgerReportBean.setId(count);
 					String date[] = obj[11].toString().split("-");
-					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					String fdate = date[2] + "/" + date[1] + "/" + date[0];
 					ledgerReportBean.setDate(fdate);
 					ledgerReportBean.setSubLedger(obj[3].toString());
 					ledgerReportBean.setTxnType("Debit Note");
@@ -10293,7 +10926,7 @@ public class GameLobbyController {
 					ledgerReportBean = new LedgerReportBean();
 					ledgerReportBean.setId(count);
 					String date[] = obj[13].toString().split("-");
-					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					String fdate = date[2] + "/" + date[1] + "/" + date[0];
 					ledgerReportBean.setDate(fdate);
 					ledgerReportBean.setSubLedger(obj[1].toString());
 					ledgerReportBean.setTxnType("Receipt");
@@ -10316,7 +10949,7 @@ public class GameLobbyController {
 					ledgerReportBean = new LedgerReportBean();
 					ledgerReportBean.setId(count);
 					String date[] = obj[12].toString().split("-");
-					String fdate = date[2]+"/"+date[1]+"/"+date[0];
+					String fdate = date[2] + "/" + date[1] + "/" + date[0];
 					ledgerReportBean.setDate(fdate);
 					ledgerReportBean.setSubLedger(obj[1].toString());
 					ledgerReportBean.setTxnType("Payment");
@@ -10335,46 +10968,46 @@ public class GameLobbyController {
 			if (journalResult != null && !journalResult.isEmpty() && journalResult.size() > 0) {
 
 				for (Object[] obj : journalResult) {
-					
+
 					String subLedArr[] = obj[3].toString().split(",");
-					String drCr[]  = obj[2].toString().split(",");
+					String drCr[] = obj[2].toString().split(",");
 					String debAmt[] = obj[4].toString().split(",");
 					String credAmt[] = obj[5].toString().split(",");
-					for(int i=0;i<subLedArr.length;i++) {
+					for (int i = 0; i < subLedArr.length; i++) {
 						String ledger = subLedArr[i].trim();
 						String drcr = drCr[i].trim();
-						if(ledgerName.equals(ledger) && drcr.equalsIgnoreCase("Cr")) {
+						if (ledgerName.equals(ledger) && drcr.equalsIgnoreCase("Cr")) {
 							ledgerReportBean = new LedgerReportBean();
 							ledgerReportBean.setId(count);
 							String date[] = obj[8].toString().split("-");
-							String fdate = date[2]+"/"+date[1]+"/"+date[0];
+							String fdate = date[2] + "/" + date[1] + "/" + date[0];
+
 							ledgerReportBean.setDate(fdate);
-							ledgerReportBean.setSubLedger(ledgerName);
+							ledgerReportBean.setSubLedger(subLedArr[0]);
 							ledgerReportBean.setTxnType("Journal");
 							ledgerReportBean.setVoucherNumber(obj[7].toString());
 							ledgerReportBean.setCredit(credAmt[i].trim());
 							ledgerReportBean.setDebit("");
 							map.put("" + count, ledgerReportBean);
 							count++;
-							
-						}
-						else if(ledgerName.equals(ledger) && drcr.equalsIgnoreCase("Dr")) {
+
+						} else if (ledgerName.equals(ledger) && drcr.equalsIgnoreCase("Dr")) {
 							ledgerReportBean = new LedgerReportBean();
 							ledgerReportBean.setId(count);
 							String date[] = obj[8].toString().split("-");
-							String fdate = date[2]+"/"+date[1]+"/"+date[0];
+							String fdate = date[2] + "/" + date[1] + "/" + date[0];
 							ledgerReportBean.setDate(fdate);
-							ledgerReportBean.setSubLedger(ledgerName);
+							ledgerReportBean.setSubLedger(subLedArr[1]);
 							ledgerReportBean.setTxnType("Journal");
 							ledgerReportBean.setVoucherNumber(obj[7].toString());
 							ledgerReportBean.setCredit("");
 							ledgerReportBean.setDebit(debAmt[i].trim());
 							map.put("" + count, ledgerReportBean);
 							count++;
-							
+
 						}
 					}
-					
+
 				}
 			}
 			return map;
@@ -10400,69 +11033,67 @@ public class GameLobbyController {
 			Session session = HibernateSessionFactory.getSession();
 			String sqlString = "";
 			SQLQuery query = null;
-			
-			
-			
-				
-				sqlString = "SELECT a.balance,a.date,a.sale_voucher_number,a.party_id,a.blnc_type,b.emp_id FROM st_rm_bill_wise_details_sale AS a INNER JOIN `st_rm_txn_sales_master`  AS b ON a.sale_voucher_number = b.voucher_numbering WHERE a.type_of_ref='Agst Ref' and a.is_used='No' ";
-				if(ledgerName!=null && !ledgerName.isEmpty() && !ledgerName.equals("-1")) {
-					int partyId = getLedgerIdByName(ledgerName);
-					sqlString+=" and a.party_id="+partyId+" ";
-				}
-				if(empName!=null && !empName.isEmpty() && !empName.equals("-1")) {
-					int empId = getEmployeeId(empName);
-					sqlString+=" and b.emp_id="+empId+" ";
-				}
-				if(fromDate!=null && !fromDate.isEmpty()) {
-					
-					sqlString+=" and STR_TO_DATE(a.date,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate+"','%d-%m-%Y') ";
-					
-				}
-				if(toDate!=null && !toDate.isEmpty()) {
-					
-					sqlString+=" and STR_TO_DATE(a.date,'%d-%m-%Y') <= STR_TO_DATE('" + toDate+"','%d-%m-%Y') ";
-					
-				}
 
-				query = session.createSQLQuery(sqlString);
-				List<Object[]> saleBillsList = query.list();
-				if(saleBillsList!=null && !saleBillsList.isEmpty() && saleBillsList.size()>0) {
-					
-					for(Object[] obj:saleBillsList) {
-						int creditPeriod = 0;
-						sqlString = "SELECT credit_period FROM st_rm_credit_limit WHERE ledger_id="+(int)obj[3];
-						query = session.createSQLQuery(sqlString);
-						List<Integer> creditPeriodList = query.list();
-						if(creditPeriodList!=null && !creditPeriodList.isEmpty() && creditPeriodList.size()>0 && !creditPeriodList.get(0).equals("-1"))
-						 creditPeriod = creditPeriodList.get(0);
-						
-						bean = new BillsBean();
-						c.setTime(sdf.parse(obj[1].toString()));
-						c.add(Calendar.DAY_OF_MONTH, creditPeriod);
-						bean.setBillDate(obj[1].toString());
-						bean.setBillDueDate(sdf.format(c.getTime()));
-						bean.setLedgerName(getPartyNameById((int)obj[3]));
-						bean.setBillVoucherNo(obj[2].toString());
-						bean.setEmpName(empName);
-						bean.setBillAmount(obj[0].toString()+" "+obj[4].toString());
-						
-						SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
-						df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
-						Date _todayDate = df.parse(date);
-						Date _Billdate = df.parse(obj[1].toString());
-						df.applyPattern("yyyy-MM-dd");
-						String _todayDate1 = df.format(_todayDate);
-						String _Billdate1 = df.format(_Billdate);
-						LocalDateTime _dateToday = LocalDateTime.parse(_todayDate1);
-						LocalDateTime _dateBill = LocalDateTime.parse(_Billdate1);
-						Days days = Days.daysBetween(_dateBill, _dateToday);
-						bean.setDueDays(""+days.getDays());
-						count++;
-						map.put(""+count, bean);
-					}
+			sqlString = "SELECT a.balance,a.date,a.sale_voucher_number,a.party_id,a.blnc_type,b.emp_id FROM st_rm_bill_wise_details_sale AS a INNER JOIN `st_rm_txn_sales_master`  AS b ON a.sale_voucher_number = b.voucher_numbering WHERE a.type_of_ref='Agst Ref' and a.is_used='No' ";
+			if (ledgerName != null && !ledgerName.isEmpty() && !ledgerName.equals("-1")) {
+				int partyId = getLedgerIdByName(ledgerName);
+				sqlString += " and a.party_id=" + partyId + " ";
+			}
+			if (empName != null && !empName.isEmpty() && !empName.equals("-1")) {
+				int empId = getEmployeeId(empName);
+				sqlString += " and b.emp_id=" + empId + " ";
+			}
+			if (fromDate != null && !fromDate.isEmpty()) {
+
+				sqlString += " and STR_TO_DATE(a.date,'%d-%m-%Y') >= STR_TO_DATE('" + fromDate + "','%d-%m-%Y') ";
+
+			}
+			if (toDate != null && !toDate.isEmpty()) {
+
+				sqlString += " and STR_TO_DATE(a.date,'%d-%m-%Y') <= STR_TO_DATE('" + toDate + "','%d-%m-%Y') ";
+
+			}
+
+			query = session.createSQLQuery(sqlString);
+			List<Object[]> saleBillsList = query.list();
+			if (saleBillsList != null && !saleBillsList.isEmpty() && saleBillsList.size() > 0) {
+
+				for (Object[] obj : saleBillsList) {
+					int creditPeriod = 0;
+					sqlString = "SELECT credit_period FROM st_rm_credit_limit WHERE ledger_id=" + (int) obj[3];
+					query = session.createSQLQuery(sqlString);
+					List<Integer> creditPeriodList = query.list();
+					if (creditPeriodList != null && !creditPeriodList.isEmpty() && creditPeriodList.size() > 0
+							&& !creditPeriodList.get(0).equals("-1"))
+						creditPeriod = creditPeriodList.get(0);
+
+					bean = new BillsBean();
+					c.setTime(sdf.parse(obj[1].toString()));
+					c.add(Calendar.DAY_OF_MONTH, creditPeriod);
+					bean.setBillDate(obj[1].toString());
+					bean.setBillDueDate(sdf.format(c.getTime()));
+					bean.setLedgerName(getPartyNameById((int) obj[3]));
+					bean.setBillVoucherNo(obj[2].toString());
+					bean.setEmpName(empName);
+					bean.setBillAmount(obj[0].toString() + " " + obj[4].toString());
+
+					SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+					df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+					Date _todayDate = df.parse(date);
+					Date _Billdate = df.parse(obj[1].toString());
+					df.applyPattern("yyyy-MM-dd");
+					String _todayDate1 = df.format(_todayDate);
+					String _Billdate1 = df.format(_Billdate);
+					LocalDateTime _dateToday = LocalDateTime.parse(_todayDate1);
+					LocalDateTime _dateBill = LocalDateTime.parse(_Billdate1);
+					Days days = Days.daysBetween(_dateBill, _dateToday);
+					bean.setDueDays("" + days.getDays());
+					count++;
+					map.put("" + count, bean);
 				}
+			}
 			return map;
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return null;
@@ -10472,10 +11103,11 @@ public class GameLobbyController {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("SELECT ledger_name FROM st_rm_acc_ledger_master WHERE ledger_id="+i);
+			SQLQuery query = session
+					.createSQLQuery("SELECT ledger_name FROM st_rm_acc_ledger_master WHERE ledger_id=" + i);
 			List<String> name = query.list();
 			return name.get(0);
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return "";
@@ -10486,15 +11118,17 @@ public class GameLobbyController {
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			int ledgerId = getLedgerIdByName(ledgerName);
-			SQLQuery query = session.createSQLQuery("SELECT party_balance_bef_txn FROM st_rm_party_txn_curr_balance_master WHERE id = (SELECT MIN(id) FROM st_rm_party_txn_curr_balance_master WHERE `date`='"+fromDate+"' and party_id="+ledgerId+")");
+			SQLQuery query = session.createSQLQuery(
+					"SELECT party_balance_bef_txn FROM st_rm_party_txn_curr_balance_master WHERE id = (SELECT MIN(id) FROM st_rm_party_txn_curr_balance_master WHERE `date`='"
+							+ fromDate + "' and party_id=" + ledgerId + ")");
 			List<String> result = query.list();
-			if(result!=null && !result.isEmpty() && result.size()>0) {
+			if (result != null && !result.isEmpty() && result.size() > 0) {
 				return result.get(0);
 			}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		return "0";
+		return "0 Dr";
 	}
 
 	public String getPartyTaxAmount(String ledgerName, String fromDate, String toDate) {
@@ -10502,31 +11136,37 @@ public class GameLobbyController {
 		try {
 			Session session = HibernateSessionFactory.getSession();
 			int partyId = getLedgerIdByName(ledgerName);
-			SQLQuery query = session.createSQLQuery("SELECT SUM(tax_amount) FROM st_rm_bill_wise_details_sale WHERE party_id="+partyId+" AND type_of_ref='Agst Ref' AND STR_TO_DATE(`date`,'%d-%m-%Y') >= STR_TO_DATE('"+fromDate+"','%d-%m-%Y') AND  STR_TO_DATE(`date`,'%d-%m-%Y') <= STR_TO_DATE('"+toDate+"','%d-%m-%Y')");
+			SQLQuery query = session
+					.createSQLQuery("SELECT SUM(tax_amount) FROM st_rm_bill_wise_details_sale WHERE party_id=" + partyId
+							+ " AND type_of_ref='Agst Ref' AND STR_TO_DATE(`date`,'%d-%m-%Y') >= STR_TO_DATE('"
+							+ fromDate + "','%d-%m-%Y') AND  STR_TO_DATE(`date`,'%d-%m-%Y') <= STR_TO_DATE('" + toDate
+							+ "','%d-%m-%Y')");
 			List<Double> result = query.list();
-			if(result!=null && !result.isEmpty() && result.size()>0) {
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null) {
 				return String.valueOf(result.get(0));
 			}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
+
 		return "0";
 	}
 
-	public String getOldSetReminder(String partyId,String vcrId) {
+	public String getOldSetReminder(String partyId, String vcrId) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("SELECT * FROM st_rm_bill_due_alert_scheduling_mgmt WHERE ledger_id="+partyId+" and voucher_no='"+vcrId+"' ");
+			SQLQuery query = session
+					.createSQLQuery("SELECT * FROM st_rm_bill_due_alert_scheduling_mgmt WHERE ledger_id=" + partyId
+							+ " and voucher_no='" + vcrId + "' ");
 			List<Object[]> result = query.list();
-			if(result!=null && !result.isEmpty() && result.size()>0) {
-				for(Object[] obj:result) {
-					return (int)obj[4]+";"+(int)obj[5]+";"+(int)obj[6];	
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+				for (Object[] obj : result) {
+					return (int) obj[4] + ";" + (int) obj[5] + ";" + (int) obj[6];
 				}
-				
+
 			}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return "0;0;0";
@@ -10861,39 +11501,43 @@ public class GameLobbyController {
 			e.printStackTrace();
 		}
 
-	
 	}
 
 	public String getItemRegularRate(String itemName) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("SELECT b.rate,b.super_cash_amt FROM `st_rm_stock_item_godown_opening_blc` AS b INNER JOIN `st_rm_stock_item_master` AS a ON a.st_it_id = b.item_id AND a.item_name='"+itemName+"'");
+			SQLQuery query = session.createSQLQuery(
+					"SELECT b.rate,b.super_cash_amt FROM `st_rm_stock_item_godown_opening_blc` AS b INNER JOIN `st_rm_stock_item_master` AS a ON a.st_it_id = b.item_id AND a.item_name='"
+							+ itemName + "'");
 			List<Object[]> objResult = query.list();
-			if(objResult!=null && !objResult.isEmpty() && objResult.size()>0) {
-				
-				for(Object[] obj : objResult)
-					return String.valueOf((int)obj[0]);
-				
+			if (objResult != null && !objResult.isEmpty() && objResult.size() > 0) {
+
+				for (Object[] obj : objResult)
+					return String.valueOf((int) obj[0]);
+
 			}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return "0";
 	}
+
 	public String getItemSuperCashRate(String itemName) {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("SELECT b.rate,b.super_cash_amt FROM `st_rm_stock_item_godown_opening_blc` AS b INNER JOIN `st_rm_stock_item_master` AS a ON a.st_it_id = b.item_id AND a.item_name='"+itemName+"'");
+			SQLQuery query = session.createSQLQuery(
+					"SELECT b.rate,b.super_cash_amt FROM `st_rm_stock_item_godown_opening_blc` AS b INNER JOIN `st_rm_stock_item_master` AS a ON a.st_it_id = b.item_id AND a.item_name='"
+							+ itemName + "'");
 			List<Object[]> objResult = query.list();
-			if(objResult!=null && !objResult.isEmpty() && objResult.size()>0) {
-				
-				for(Object[] obj : objResult)
+			if (objResult != null && !objResult.isEmpty() && objResult.size() > 0) {
+
+				for (Object[] obj : objResult)
 					return obj[1].toString();
-				
+
 			}
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return "0";
@@ -10903,15 +11547,1451 @@ public class GameLobbyController {
 		// TODO Auto-generated method stub
 		try {
 			Session session = HibernateSessionFactory.getSession();
-			SQLQuery query = session.createSQLQuery("SELECT st_it_id from st_rm_stock_item_master where item_name='"+itemName+"'");
+			SQLQuery query = session
+					.createSQLQuery("SELECT st_it_id from st_rm_stock_item_master where item_name='" + itemName + "'");
 			List<Integer> result = query.list();
 			int itemId = result.get(0);
-			SQLQuery query2 = session.createSQLQuery("UPDATE st_rm_stock_item_godown_opening_blc SET rate="+regularPrice+",super_cash_amt='"+superCashPrice+"' where item_id="+itemId);
+			SQLQuery query2 = session.createSQLQuery("UPDATE st_rm_stock_item_godown_opening_blc SET rate="
+					+ regularPrice + ",super_cash_amt='" + superCashPrice + "' where item_id=" + itemId);
 			query2.executeUpdate();
 			return true;
-		}catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return false;
 	}
+
+	public void blockSuperCashParty() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			LocalDate date = LocalDate.now();
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+			String currentDate = date.format(formatter);
+			SQLQuery query = session.createSQLQuery(
+					"SELECT date,sale_voucher_number,party_id from st_rm_bill_wise_details_sale WHERE type_of_ref='Agst Ref' and is_used='No' and superCashBill='yes'");
+			List<Object[]> result = query.list();
+
+			for (Object[] obj : result) {
+
+				String billDate = obj[0].toString();
+				int partyId = (int) obj[2];
+				Date today = new Date();
+				SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+				df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+
+				Date dateToday = df.parse(currentDate);
+				Date billDatePer = df.parse(billDate);
+
+				df.applyPattern("yyyy-MM-dd");
+				String dateToday1 = df.format(dateToday);
+				String billDatePer1 = df.format(billDatePer);
+				LocalDateTime effectiveDate = LocalDateTime.parse(dateToday1);
+				LocalDateTime effectiveDateDb = LocalDateTime.parse(billDatePer1);
+
+				// Now access the values as below
+				Days days = Days.daysBetween(effectiveDateDb, effectiveDate);
+				if (days.getDays() > 0 && days.getDays() > 7) {
+					query = session
+							.createSQLQuery("SELECT * FROM party_block_superCash_master WHERE partyId=" + partyId);
+					List<Object[]> checkExists = query.list();
+					if (checkExists != null && checkExists.size() > 0 && !checkExists.isEmpty()
+							&& checkExists.get(0) != null) {
+
+					} else {
+						SQLQuery queryIns = session
+								.createSQLQuery("INSERT INTO party_block_superCash_master(`partyId`,`bill`) values("
+										+ partyId + ",'" + obj[1].toString() + "')");
+						queryIns.executeUpdate();
+					}
+
+				}
+
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	public boolean getPartyBlockStatus(String partyAcc) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int partyId = getLedgerIdByName(partyAcc);
+			SQLQuery query = session
+					.createSQLQuery("Select * from party_block_superCash_master where partyId=" + partyId + "");
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null
+					&& !result.get(0).equals(null))
+				return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean changePartyStatus(String partyName, String status) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String queryString = "";
+			int partyId = getLedgerIdByName(partyName);
+			if (status.equalsIgnoreCase("Block"))
+				queryString = "INSERT INTO party_block_superCash_master(`partyId`,`status`) values(" + partyId
+						+ ",'BLOCK')";
+			else if (status.equalsIgnoreCase("Unblock"))
+				queryString = "DELETE FROM party_block_superCash_master WHERE partyId=" + partyId;
+			SQLQuery query = session.createSQLQuery(queryString);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean setUpdateApprovalStages(String empName, String juniorAccName, String dispatcherName,
+			String seniorAccName) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+
+			int empId = getUserIdByName(empName);
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			String sqlString = "SELECT * FROM st_rm_transaction_approval_master WHERE emp_id=" + empId;
+			SQLQuery criteria = session.createSQLQuery(sqlString);
+			List<Object[]> result = criteria.list();
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null) {
+				TransactionApprovalMaster approvalMaster = new TransactionApprovalMaster();
+				sqlString = "UPDATE st_rm_transaction_approval_master SET junior_acc_id="
+						+ getUserIdByName(juniorAccName) + ",dispatcher_id=" + getUserIdByName(dispatcherName)
+						+ ",senior_acc_id=" + getUserIdByName(seniorAccName) + " WHERE emp_id=" + empId;
+			} else {
+
+				sqlString = "INSERT INTO st_rm_transaction_approval_master(`emp_id`,`junior_acc_id`,`dispatcher_id`,`senior_acc_id`) values("
+						+ empId + "," + getUserIdByName(juniorAccName) + "," + getUserIdByName(dispatcherName) + ","
+						+ getUserIdByName(seniorAccName) + ")";
+			}
+			SQLQuery querysql = session.createSQLQuery(sqlString);
+			querysql.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public String getAccNameByEmpId(int userId, String columnName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT " + columnName + " from st_rm_transaction_approval_master WHERE emp_id=" + userId);
+			;
+			List<Integer> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null) {
+				return getUserNameByIdFromMaster(result.get(0));
+			} else {
+				return "-1";
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "-1";
+	}
+
+	public int getFirstLevelApproval(int userId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT * from st_rm_transaction_approval_master WHERE emp_id=" + userId);
+			;
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null) {
+				for (Object[] obj : result)
+					return (int) obj[2];
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	public String getIsLastApproval(String Id, String txnType) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String tableName = "";
+			String suffix = "";
+			if (txnType.equalsIgnoreCase("receipt")) {
+				tableName = "st_rm_txn_receipt_master_emp";
+				suffix = "receiptId=" + Id;
+			} else if (txnType.equalsIgnoreCase("sales")) {
+				tableName = "st_rm_txn_sales_master_emp";
+				suffix = "salesId=" + Id;
+			} else if (txnType.equalsIgnoreCase("credit note")) {
+				tableName = "st_rm_txn_creditNote_master_emp";
+				suffix = "cnId=" + Id;
+			}
+			SQLQuery query = session.createSQLQuery("SELECT approval_count from " + tableName + " WHERE " + suffix);
+			int count = (int) query.list().get(0);
+			int approvalCount = 0;
+			if (txnType.equals("receipt") || txnType.equals("payment")) {
+				approvalCount = 1;
+			} else {
+				approvalCount = 2;
+			}
+			if (count >= approvalCount || count == 1) {
+				return "YES";
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "NO";
+	}
+
+	public boolean rejectReceipt(String rcptId, String rejectReason, int userId) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			SQLQuery query = session
+					.createSQLQuery("UPDATE st_rm_txn_receipt_master_emp SET order_status='rejected',order_status_by="
+							+ userId + ",reject_reason='" + rejectReason + "' WHERE receiptId=" + rcptId);
+			query.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean approveReceipt(String rcptId, int userId) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			int approveCount = 0;
+			int createdUserId = 0;
+			SQLQuery query = session
+					.createSQLQuery("SELECT * FROM st_rm_txn_receipt_master_emp WHERE receiptId=" + rcptId);
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result) {
+					approveCount = (int) obj[4];
+					createdUserId = (int) obj[2];
+				}
+
+			}
+			approveCount = approveCount + 1;
+			query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master_emp SET approval_count=" + approveCount
+					+ ",order_status_by=" + getLastApproval(createdUserId) + " WHERE receiptId=" + rcptId);
+			query.executeUpdate();
+			query = session.createSQLQuery(
+					"UPDATE receipt_order_staus_alert SET changed_by=" + userId + " WHERE order_id=" + rcptId + "");
+			query.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	private int getLastApproval(int userId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT * from st_rm_transaction_approval_master WHERE emp_id=" + userId);
+			;
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null) {
+				for (Object[] obj : result)
+					return (int) obj[4];
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	private int getSecondApproval(int userId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT * from st_rm_transaction_approval_master WHERE emp_id=" + userId);
+			;
+			List<Object[]> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0 && result.get(0) != null) {
+				for (Object[] obj : result)
+					return (int) obj[3];
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	public boolean changeStatusReceipt(String rcptId, int userId) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int approveCount = 0;
+			int createdUserId = 0;
+			SQLQuery query = session
+					.createSQLQuery("SELECT * FROM st_rm_txn_receipt_master_emp WHERE receiptId=" + rcptId);
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result) {
+					approveCount = (int) obj[4];
+					createdUserId = (int) obj[2];
+				}
+
+			}
+			approveCount = approveCount + 1;
+			query = session.createSQLQuery("UPDATE st_rm_txn_receipt_master_emp SET approval_count=" + approveCount
+					+ ",order_status_by=" + userId + ",order_status='accepted' WHERE receiptId=" + rcptId);
+			query.executeUpdate();
+			query = session.createSQLQuery("UPDATE receipt_order_staus_alert SET changed_by=" + userId
+					+ ",status='accepted' WHERE order_id=" + rcptId + "");
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+
+	}
+
+	public boolean rejectCreditNote(String orderNo, String rejectReason, int userId) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			SQLQuery query = session.createSQLQuery(
+					"UPDATE st_rm_txn_creditNote_master_emp SET order_status='rejected',order_status_by=" + userId
+							+ ",reject_reason='" + rejectReason + "' where cnId=" + orderNo);
+			query.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean rejectSales(String orderNo, String rejectReason, int userId) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			SQLQuery query = session
+					.createSQLQuery("UPDATE st_rm_txn_sales_master_emp SET order_status='rejected',order_status_by="
+							+ userId + ",reject_reason='" + rejectReason + "' where salesId=" + orderNo);
+			query.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean approveCreditNote(String orderNo, int userId) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			int approveCount = 0;
+			int createdUserId = 0;
+			SQLQuery query = session
+					.createSQLQuery("SELECT * FROM st_rm_txn_creditNote_master_emp WHERE cnId=" + orderNo);
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result) {
+					approveCount = (int) obj[4];
+					createdUserId = (int) obj[3];
+				}
+
+			}
+			approveCount = approveCount + 1;
+			query = session.createSQLQuery("UPDATE st_rm_txn_creditNote_master_emp SET approval_count=" + approveCount
+					+ ",order_status_by=" + getSecondApproval(createdUserId) + " WHERE cnId=" + orderNo);
+			query.executeUpdate();
+			query = session.createSQLQuery(
+					"UPDATE creditNote_order_staus_alert SET changed_by=" + userId + " WHERE order_id=" + orderNo + "");
+			query.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean approveSale(String orderNo, int userId) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			int approveCount = 0;
+			int createdUserId = 0;
+			SQLQuery query = session
+					.createSQLQuery("SELECT * FROM st_rm_txn_sales_master_emp WHERE salesId=" + orderNo);
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result) {
+					approveCount = (int) obj[4];
+					createdUserId = (int) obj[3];
+				}
+
+			}
+			approveCount = approveCount + 1;
+			query = session.createSQLQuery("UPDATE st_rm_txn_sales_master_emp SET approval_count=" + approveCount
+					+ ",order_status_by=" + getSecondApproval(createdUserId) + " WHERE salesId=" + orderNo);
+			query.executeUpdate();
+			query = session.createSQLQuery(
+					"UPDATE receipt_order_staus_alert SET changed_by=" + userId + " WHERE order_id=" + orderNo + "");
+			query.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean approveCreditNote(String orderNo, int userId, String isFinalApproval) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int approveCount = 0;
+			int createdUserId = 0;
+			SQLQuery query = session
+					.createSQLQuery("SELECT * FROM st_rm_txn_creditNote_master_emp WHERE cnId=" + orderNo);
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result) {
+					approveCount = (int) obj[4];
+					createdUserId = (int) obj[3];
+				}
+
+			}
+			approveCount = approveCount + 1;
+			query = session.createSQLQuery("UPDATE st_rm_txn_creditNote_master_emp SET approval_count=" + approveCount
+					+ ",order_status_by=" + getLastApproval(createdUserId) + " WHERE cnId=" + orderNo);
+			query.executeUpdate();
+			query = session.createSQLQuery(
+					"UPDATE creditNote_order_staus_alert SET changed_by=" + userId + " WHERE order_id=" + orderNo + "");
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean approveSale(String orderNo, int userId, String isFinalApproval) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int approveCount = 0;
+			int createdUserId = 0;
+			SQLQuery query = session
+					.createSQLQuery("SELECT * FROM st_rm_txn_sales_master_emp WHERE salesId=" + orderNo);
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result) {
+					approveCount = (int) obj[4];
+					createdUserId = (int) obj[3];
+				}
+
+			}
+			approveCount = approveCount + 1;
+			query = session.createSQLQuery("UPDATE st_rm_txn_sales_master_emp SET approval_count=" + approveCount
+					+ ",order_status_by=" + getLastApproval(createdUserId) + " WHERE salesId=" + orderNo);
+			query.executeUpdate();
+			query = session.createSQLQuery(
+					"UPDATE receipt_order_staus_alert SET changed_by=" + userId + " WHERE order_id=" + orderNo + "");
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public void setDocumentPathSalesOrder(int userId, String orderNo, String fileFullPathDD, String fileFullPathTB,
+			String tn, String des, String transportFreight, String vn, String loadUnloadCharge, String localFrieght,
+			String ddn, String billt) {
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"INSERT INTO st_rm_txn_sales_master_emp_others(`saleId`,`ddn`,`transport_name`,`destination`,`biit`,`vehical_no`,`transport_frieght`,`local_frieght`,`load_unload_charge`,`ddn_doc`,`billt_doc`) values("
+							+ orderNo + ",'" + ddn + "','" + tn + "','" + des + "','" + billt + "','" + vn + "','"
+							+ transportFreight + "','" + localFrieght + "','" + loadUnloadCharge + "','"
+							+ fileFullPathDD + "','" + fileFullPathTB + "')");
+			query.executeUpdate();
+			approveSale(orderNo, userId, "yes");
+
+		} catch (Exception e) {
+
+			e.printStackTrace();
+		}
+		// TODO Auto-generated method stub
+
+	}
+
+	public Map<String, LedgerReportBean> getEmployeeBalanceSheetReport(String empName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Map<String, LedgerReportBean> map = new HashMap<String, LedgerReportBean>();
+			LedgerReportBean bean = null;
+			if (empName != null && !empName.isEmpty()) {
+
+				int empId = getUserIdByName(empName);
+
+				SQLQuery query = session.createSQLQuery(
+						"SELECT ledger_id,ledger_name from st_rm_acc_ledger_master WHERE emp_under_id=" + empId);
+				List<Object[]> result = query.list();
+				if (result != null && result.size() > 0 && result.get(0) != null) {
+					for (Object[] obj : result) {
+
+						query = session.createSQLQuery(
+								"SELECT balance,balance_type from st_rm_purchase_party_master_balance WHERE party_id="
+										+ (int) obj[0]);
+						List<Object[]> resultSub = query.list();
+
+						for (Object[] objSub : resultSub) {
+							bean = new LedgerReportBean();
+							bean.setSubLedger(obj[1].toString());
+							if (objSub[1].toString().equalsIgnoreCase("Dr")) {
+								bean.setDebit(objSub[0].toString());
+							} else {
+								bean.setCredit(objSub[0].toString());
+							}
+						}
+						map.put(String.valueOf((int) obj[0]), bean);
+					}
+					return map;
+				}
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public boolean returnSalesOrder(String orderNo, String rejectReason, int userId) {
+		// TODO Auto-generated method stub
+		Transaction transaction = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			transaction = session.beginTransaction();
+			SQLQuery query = session
+					.createSQLQuery("DELETE FROM st_rm_txn_sales_master_emp_others where saleId=" + orderNo);
+			query.executeUpdate();
+			query = session.createSQLQuery(
+					"SELECT emp_id,approval_count from st_rm_txn_sales_master_emp WHERE salesId=" + orderNo);
+			List<Object[]> approvalCountResult = query.list();
+			int count = 0;
+			int empId = 0;
+			for (Object[] obj : approvalCountResult) {
+				count = (int) obj[1];
+				empId = (int) obj[0];
+			}
+
+			count = count - 1;
+			query = session.createSQLQuery("UPDATE st_rm_txn_sales_master_emp SET approval_count=" + count
+					+ ",order_status_by=" + getSecondApproval(empId) + ",reject_reason='" + rejectReason
+					+ "' WHERE salesId=" + orderNo);
+			query.executeUpdate();
+			transaction.commit();
+			return true;
+		} catch (Exception e) {
+			transaction.rollback();
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public StDmDomainAliasNameMaster getAliasMaster() {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			Criteria criteria = session.createCriteria(StDmDomainAliasNameMaster.class);
+			criteria.add(Restrictions.eq("aliasId", (short) 1));
+			StDmDomainAliasNameMaster aliasNameMaster = (StDmDomainAliasNameMaster) criteria.list().get(0);
+			return aliasNameMaster;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public String getPartyAccountByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT party_acc_name from st_rm_txn_sales_master WHERE voucher_numbering='"
+							+ salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public String getTransportNameByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT tansport_name from st_rm_txn_sales_master WHERE voucher_numbering='"
+							+ salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+
+		}
+		return "";
+	}
+
+	public String getVehicalNumberByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT vehicle_no from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+
+		}
+		return "";
+	}
+
+	public String getDestinationByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT destination from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+
+		}
+		return "";
+	}
+
+	public String getPaymentDateByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT saleDate from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+
+		}
+		return "00-00-0000";
+	}
+
+	public String getTotalAmountByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT totalAmt from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+
+		}
+		return "0.0";
+	}
+
+	public String getSaleStockItemsByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT name_item from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getSaleStockQtyByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT actual_qty from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getSaleStockQtyRateByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT rate from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getSaleStockQtyAmtByVoucher(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT amount from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> sqlResult = query.list();
+			return sqlResult.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getFirmGSTN(String partyAcc) {
+		// TODO Auto-generated method stub
+		try {
+			int ledgerId = getLedgerIdByName(partyAcc);
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT firmGSTN from bo_um_ledger_details WHERE ledgerId=" + ledgerId);
+			List<String> sqlResult = query.list();
+
+			if (sqlResult != null && sqlResult.size() > 0 && !sqlResult.isEmpty())
+				return sqlResult.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public List<String> getBulkUnitNumberByItem(String itemName) {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		Logger logger = Logger.getLogger(GameLobbyController.class.getName());
+		try {
+			response = new java.util.LinkedList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT item_unit_id from st_rm_stock_item_master WHERE item_name='" + itemName + "'");
+			List<Integer> sqlResult = query.list();
+			if (sqlResult != null && !sqlResult.isEmpty() && sqlResult.size() > 0) {
+
+				query = session.createSQLQuery(
+						"SELECT bulk_unit_name,bulk_to_unit from st_rm_stock_item_unit_master WHERE item_unit_id="
+								+ sqlResult.get(0));
+				List<Object[]> finalResult = query.list();
+				if (finalResult != null && finalResult.size() > 0 && !finalResult.isEmpty()) {
+
+					for (Object[] obj : finalResult) {
+						String name = obj[0].toString();
+						String qty = obj[1].toString();
+						response.add(name);
+						response.add(qty);
+					}
+					return response;
+				}
+
+			}
+		} catch (Exception e) {
+			logger.info("ERROR: unable to fetch bulk unit number by item...");
+		}
+		return response;
+	}
+
+	public String getHSNCodeByItemName(String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT item_unit_id from st_rm_stock_item_master WHERE item_name='" + itemName + "'");
+			List<Integer> sqlResult = query.list();
+			if (sqlResult != null && !sqlResult.isEmpty() && sqlResult.size() > 0) {
+
+				query = session.createSQLQuery(
+						"SELECT hsn_sac_code from st_rm_stock_item_unit_master WHERE item_unit_id=" + sqlResult.get(0));
+				List<String> finalResult = query.list();
+				if (finalResult != null && finalResult.size() > 0 && !finalResult.isEmpty()) {
+
+					return finalResult.get(0);
+				}
+
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getBatchNumberBySaleNo(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT item_batch from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<String> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+				return result.get(0);
+			}
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public List<String> getMfgExpDateByItemName(String itemName) {
+		// TODO Auto-generated method stub
+		List<String> response = null;
+		try {
+			response = new LinkedList<String>();
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT st_it_id from st_rm_stock_item_master WHERE item_name='" + itemName + "'");
+			List<Integer> sqlResult = query.list();
+			if (sqlResult != null && !sqlResult.isEmpty() && sqlResult.size() > 0) {
+
+				query = session.createSQLQuery(
+						"SELECT mfg_date,exp_date from st_rm_stock_item_godown_opening_blc WHERE item_id="
+								+ sqlResult.get(0));
+				List<Object[]> finalResult = query.list();
+				if (finalResult != null && finalResult.size() > 0 && !finalResult.isEmpty()) {
+					for (Object[] obj : finalResult) {
+						String mfg = obj[0].toString();
+						String exp = obj[1].toString();
+						response.add(mfg);
+						response.add(exp);
+					}
+					return response;
+				}
+
+			}
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		return response;
+	}
+
+	public String getItemUnitByName(String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT is_unit from st_rm_stock_item_master WHERE item_name='" + itemName + "'");
+			List<String> result = query.list();
+			return result.get(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getUnderEmpNameBySale(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT emp_id from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			List<Integer> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+				int empId = result.get(0);
+				if (empId != 0) {
+					String empName = getEmpNameFromId(empId);
+					return empName;
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getUnderEmpNameOrderBySale(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT emp_id from st_rm_txn_sales_master_emp WHERE salesId=" + salesNoVoucher + "");
+			List<Integer> result = query.list();
+			if (result != null && !result.isEmpty() && result.size() > 0) {
+				int empId = result.get(0);
+				if (empId != 0) {
+					String empName = getUserNameByIdFromMaster(empId);
+					return empName;
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public Double getGSTByItemName(String itemName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT alter_gst_id from st_rm_stock_item_master WHERE item_name='" + itemName + "'");
+			List<Integer> gstId = query.list();
+			if (gstId != null && !gstId.isEmpty() && gstId.size() > 0) {
+
+				query = session.createSQLQuery("SELECT igst from st_rm_stock_gst_master WHERE gst_id=" + gstId.get(0));
+				List<Double> result = query.list();
+				if (result != null && !result.isEmpty() && result.size() > 0) {
+					return result.get(0);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return 0.0;
+	}
+
+	public String getSaleDeliveryDate(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT saleDate from st_rm_txn_sales_master WHERE voucher_numbering='" + salesNoVoucher + "'");
+			return (String) query.list().get(0);
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+		return "";
+	}
+
+	public boolean createManufacturingRecord(ManufacturingBean manufacturingBean) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "INSERT INTO `crm`.`bo_um_manufacturing_master` (`item_name`, `item_godown`, `item_qty`, `item_batch`, `item_mfg`, `item_exp`, `com_item`, `com_godown`, `com_qty`, `com_rate`, `com_amt`, `scrap_item`, `scrap_godown`, `scrap_cost_alloc`, `scrap_qty`, `scrap_rate`, `scrap_amt`, `other_cost_type`, `other_cost_amt`, `tot_add_cost`, `eff_cost`, `alloc_primary_item`, `eff_rate_primary_item`, `eff_qty_primary_item`) VALUES \n"
+					+ "('" + manufacturingBean.getStockItemName() + "','" + manufacturingBean.getStockGodown() + "','"
+					+ manufacturingBean.getManufacturingQty() + "','" + manufacturingBean.getBatchNo() + "','"
+					+ manufacturingBean.getMfg() + "','" + manufacturingBean.getExp() + "','"
+					+ manufacturingBean.getComponentitemName() + "','" + manufacturingBean.getComponentitemGodown()
+					+ "','" + manufacturingBean.getComponentItemQty() + "','" + manufacturingBean.getComponentItemRate()
+					+ "','" + manufacturingBean.getComponentItemAmt() + "','" + manufacturingBean.getScrapitemName()
+					+ "','" + manufacturingBean.getScrapitemGodown() + "','" + manufacturingBean.getScrapCostPercent()
+					+ "','" + manufacturingBean.getScrapItemQty() + "','" + manufacturingBean.getScrapItemrate() + "','"
+					+ manufacturingBean.getScrapItemAmt() + "','" + manufacturingBean.getCostComponentitemName() + "','"
+					+ manufacturingBean.getCostComponentItemAmt() + "','" + manufacturingBean.getTotalAdditionalCost()
+					+ "','" + manufacturingBean.getEffectiveCost() + "','"
+					+ manufacturingBean.getAllocationPrimaryItem() + "','"
+					+ manufacturingBean.getEffectiveRatePrimaryItem() + "','"
+					+ manufacturingBean.getEffectiveQtyPrimaryItem() + "')";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+
+			sqlString = "SELECT st_it_id from st_rm_stock_item_master WHERE item_name='"
+					+ manufacturingBean.getStockItemName() + "'";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> result = query.list();
+			int itemId = result.get(0);
+
+			sqlString = "SELECT gd_id from st_rm_Godown_master WHERE name='" + manufacturingBean.getStockGodown() + "'";
+			query = session.createSQLQuery(sqlString);
+			List<Integer> resultGoDown = query.list();
+			int godownId = resultGoDown.get(0);
+
+			sqlString = "SELECT is_unit from st_rm_stock_item_master WHERE item_name='"
+					+ manufacturingBean.getStockItemName() + "'";
+			query = session.createSQLQuery(sqlString);
+			List<String> resultUnit = query.list();
+			String unit = resultUnit.get(0);
+
+			sqlString = "INSERT INTO st_rm_item_qty_godown(`item_id`,`godown_id`,`unit`,`availableQty`,`batch`,`mfg`,`exp`) values("
+					+ itemId + "," + godownId + ",'" + unit + "','" + manufacturingBean.getEffectiveQtyPrimaryItem()
+					+ "','" + manufacturingBean.getBatchNo() + "','" + manufacturingBean.getMfg() + "','"
+					+ manufacturingBean.getExp() + "')";
+			query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+
+			sqlString = "INSERT INTO st_rm_stock_item_godown_opening_blc(`item_id`,`godown_id`,`batch_id`,`mfg_date`,`exp_date`,`quantity`,`rate`) values("
+					+ itemId + "," + godownId + ",'" + manufacturingBean.getBatchNo() + "','"
+					+ manufacturingBean.getMfg() + "','" + manufacturingBean.getExp() + "','"
+					+ manufacturingBean.getEffectiveQtyPrimaryItem() + "',0)";
+			query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public void scheduleAllClosingBalance() {
+		// TODO Auto-generated method stub
+		try {
+			Logger logger = Logger.getLogger(GameLobbyController.class.getName());
+			logger.info(
+					"------------------------SCHEDULAR FOR DAILY CLOSING BALANCE START-----------------------------");
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT * FROM st_rm_purchase_party_master_balance";
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			Map<Integer, String> balanceMap = new HashMap<Integer, String>();
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result) {
+					String balance = obj[2].toString().trim() + " " + obj[3].toString().trim();
+					balanceMap.put((int) obj[1], balance);
+				}
+			}
+
+			for (Entry<Integer, String> map : balanceMap.entrySet()) {
+
+				int partyId = map.getKey();
+				String partyBalc = map.getValue();
+				String vcrId = "JSC/OPENING/BAL";
+				String txn_type = "OPENING";
+				Date today = new Date();
+				DateFormat df = new SimpleDateFormat("dd-MM-yyyy");
+				df.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+				String date = df.format(today);
+
+				String sqlString1 = "INSERT INTO st_rm_party_txn_curr_balance_master(`party_id`,`party_balance_bef_txn`,`party_balance_aft_txn`,`date`,`txn_type`,`voucher_id`) values("
+						+ partyId + ",'" + partyBalc + "','" + partyBalc + "','" + date + "','" + txn_type + "','"
+						+ vcrId + "')";
+				query = session.createSQLQuery(sqlString1);
+				query.executeUpdate();
+			}
+			logger.info("------------------------SCHEDULAR FOR DAILY CLOSING BALANCE END-----------------------------");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public Map<String, InterestBean> getInterestReportResult(String ledgerName, String fromDate, String toDate) {
+		// TODO Auto-generated method stub
+		Map<String, InterestBean> map = null;
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "";
+			String append = "";
+			map = new HashMap<String, InterestBean>();
+			InterestBean bean = null;
+			int partyId = getLedgerIdByName(ledgerName);
+			if (fromDate != null && toDate != null && !fromDate.isEmpty() && !toDate.isEmpty()) {
+				append = " AND STR_TO_DATE(scheduling_date,'%d-%m-%Y')>=STR_TO_DATE('" + fromDate
+						+ "','%d-%m-%Y') AND STR_TO_DATE(scheduling_date,'%d-%m-%Y')<=STR_TO_DATE('" + toDate
+						+ "','%d-%m-%Y')";
+
+			}
+			sqlString = "SELECT * FROM st_rm_bill_balances_scheduling_report WHERE bill_type='Sale' AND party_id="
+					+ partyId + append;
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+
+			if (result != null && result.size() > 0) {
+				int count = 0;
+				for (Object[] obj : result) {
+					count++;
+					bean = new InterestBean();
+					bean.setId(count);
+					bean.setPartyId((int) obj[1]);
+					bean.setBalanceType(obj[10].toString());
+					bean.setBillBalance(obj[6].toString());
+					bean.setBillType(obj[11].toString());
+					bean.setInterestBalance(obj[7].toString());
+					bean.setPartyCurrBalance(obj[8].toString());
+					bean.setSchedulingDate(obj[5].toString());
+					bean.setSchedulingStatus(obj[4].toString());
+					bean.setVoucherNo(obj[3].toString());
+					bean.setBillDate(getBillDateSale(bean.getVoucherNo()));
+					map.put("" + count, bean);
+				}
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+
+	private String getBillDateSale(String voucherNo) {
+		// TODO Auto-generated method stub
+
+		try {
+
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT * FROM st_rm_bill_wise_details_sale WHERE sale_voucher_number='" + voucherNo + "'");
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0) {
+
+				for (Object[] obj : result) {
+					return obj[5].toString();
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "Bill Not Exists";
+	}
+
+	public String getOrderNumber(String salesNoVoucher) {
+		// TODO Auto-generated method stub
+		Logger logger = Logger.getLogger(GameLobbyController.class.getName());
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT * FROM st_rm_bill_wise_details_sale WHERE sale_voucher_number='" + salesNoVoucher + "'");
+			List<Object[]> result = query.list();
+			Integer orderNumber = 0;
+			if (result != null && result.size() > 0) {
+				for (Object[] obj : result)
+					orderNumber = (int) obj[12];
+
+				if (orderNumber != 0)
+					return "" + orderNumber;
+			}
+		} catch (Exception e) {
+			logger.info("ERROR: No sale order found in table");
+		}
+		return "";
+	}
+
+	public String getOrderDate(String orderNumber) {
+		// TODO Auto-generated method stub
+		Logger logger = Logger.getLogger(GameLobbyController.class.getName());
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery(
+					"SELECT sale_order_date FROM st_rm_txn_sales_master_emp WHERE salesId=" + orderNumber + "");
+			List<String> result = query.list();
+			String orderDate = "";
+			if (result != null && result.size() > 0) {
+				for (String obj : result)
+					orderDate = obj;
+
+				return orderDate;
+			}
+		} catch (Exception e) {
+			logger.info("ERROR: No sale order found in table");
+		}
+		return "";
+	}
+
+	public String getEmpNameByOrder(String orderNo) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT emp_id from st_rm_txn_sales_master_emp WHERE salesId=" + orderNo);
+			Integer empId = (Integer) query.list().get(0);
+			String empname = getUserNameByIdFromMaster(empId);
+			return empname;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public String getEmpNameByCreditNoteOrder(String orderNo) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT emp_id from st_rm_txn_creditNote_master_emp WHERE cnId=" + orderNo);
+			Integer empId = (Integer) query.list().get(0);
+			String empname = getUserNameByIdFromMaster(empId);
+			return empname;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return "";
+	}
+
+	public void setDocumentPathCreditOrder(int userId, String orderNo, String ddn, String tn, String des, String billt,
+			String vn, String transportFreight, String localFrieght, String loadUnloadCharge, String deliveryCharge,
+			String ddn2) {
+		try {
+			Session session = HibernateSessionFactory.getSession();
+
+			String sqlString = "UPDATE st_rm_txn_creditNote_master_emp SET transport_name='" + tn + "' WHERE cnId="
+					+ orderNo;
+			SQLQuery query = session.createSQLQuery(sqlString);
+			query.executeUpdate();
+
+			query = session.createSQLQuery(
+					"INSERT INTO st_rm_txn_credit_master_emp_others(`cnId`,`ddn`,`destination`,`biit`,`vehical_no`,`transport_frieght`,`local_frieght`,`load_unload_charge`,`delivery_charge`) values("
+							+ orderNo + ",'" + ddn + "','" + des + "','" + billt + "','" + vn + "','" + transportFreight
+							+ "','" + localFrieght + "','" + loadUnloadCharge + "','" + deliveryCharge + "')");
+			query.executeUpdate();
+			approveCreditNote(orderNo, userId, "yes");
+
+		} catch (Exception e) {
+
+			e.printStackTrace();
+		}
+	}
+
+	public Map<Integer, BatteryBean> getBatteryReport(String attendanceDate, String empId) {
+		// TODO Auto-generated method stub
+		BatteryBean batteryBean = null;
+		Map<Integer, BatteryBean> map = new LinkedHashMap<Integer, BatteryBean>();
+		try {
+			empId = empId.replaceAll("CRM-", "");
+
+			String[] str = attendanceDate.split("-");
+			attendanceDate = str[2] + "-" + str[1] + "-" + str[0];
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("SELECT * FROM st_rm_user_mobile_battery_info WHERE user_id="
+					+ empId + " and STR_TO_DATE(login_date,'%d-%m-%Y') = STR_TO_DATE('" + attendanceDate
+					+ "','%d-%m-%Y')");
+			List<Object[]> result = query.list();
+			if (result != null && result.size() > 0 && !result.isEmpty()) {
+
+				for (Object[] obj : result) {
+
+					batteryBean = new BatteryBean();
+					batteryBean.setId((int) obj[0]);
+					batteryBean.setDateTime(obj[4].toString());
+					batteryBean.setBatteryPercentage(obj[3].toString());
+					batteryBean.setReason(obj[5]!=null?obj[5].toString():"");
+					map.put((int) obj[0], batteryBean);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return map;
+	}
+
+	public boolean editAssignLedgerToUser(String ledgerName, String employeeNames) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int ledgerId = getLedgerIdByName(ledgerName);
+			String[] empArr = employeeNames.split(",");
+			String appendArr = "";
+			for (String s : empArr) {
+				s = s.trim();
+				int empId = getUserIdByName(s);
+				SQLQuery query = session
+						.createSQLQuery("INSERT INTO bo_um_ledger_user_mapping(`ledger_id`,`emp_id`) values(" + ledgerId
+								+ "," + empId + ")");
+				query.executeUpdate();
+			}
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public String getEmployeeDateOfJoining(String empName) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session
+					.createSQLQuery("SELECT doj from st_rm_bo_user_info WHERE user_id=" + getEmployeeId(empName));
+			List<String> result = query.list();
+			if (result != null && result.size() > 0 && !result.isEmpty() && result.get(0) != null) {
+
+				return result.get(0).replaceAll("00:00", "").trim();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public Map<String, SalaryReportBean> generateSalaryReportBean(String empName, String fromDate, String toDate) {
+		// TODO Auto-generated method stub
+		Map<String, SalaryReportBean> map = new HashMap<String, SalaryReportBean>();
+		SalaryReportBean bean = null;
+
+		try {
+			int empId = getEmployeeId(empName);
+			Session session = HibernateSessionFactory.getSession();
+			String sqlString = "SELECT b.emp_id,attendance_type,DATE,present_in,present_out,odometer_reading_in, odometer_reading_out FROM `bo_um_emp_attendace_details` as a INNER JOIN `bo_um_employee_attendance` as b WHERE STR_TO_DATE(DATE,'%Y-%m-%d') >= STR_TO_DATE('"
+					+ fromDate + "','%Y-%m-%d')  AND STR_TO_DATE(DATE,'%Y-%m-%d') <= STR_TO_DATE('" + toDate
+					+ "','%Y-%m-%d') AND a.detail_id = b.detail_id AND emp_id=" + empId;
+
+			SQLQuery query = session.createSQLQuery(sqlString);
+			List<Object[]> result = query.list();
+			int count = 1;
+			if (result != null && result.size() > 0 && !result.isEmpty()) {
+
+				for (Object[] obj : result) {
+
+					bean = new SalaryReportBean();
+					bean.setEmpId(String.valueOf("Emp-" + (int) obj[0]));
+					bean.setDate(obj[2].toString());
+					bean.setAttendanceType(obj[1].toString());
+					bean.setTA("0.0");
+					bean.setdA("0.0");
+					bean.setSalary("0.0");
+					bean.setHotelExp("0.0");
+					bean.setOtherExp("0.0");
+					String presentIn = obj[3] != null ? obj[3].toString() : "";
+					String presentOut = obj[4] != null ? obj[4].toString() : "";
+
+					String odoIn = obj[5] != null ? obj[5].toString() : "0";
+					String odoOut = obj[6] != null ? obj[6].toString() : "0";
+
+					long totalWorkingHour1 = 0;
+					String totalWorkingHour = "0.0";
+					if (!presentIn.isEmpty() && !presentOut.isEmpty()) {
+
+						SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+						Date date1 = format.parse(presentIn.split(" ")[1].trim());
+						Date date2 = format.parse(presentOut.split(" ")[1].trim());
+						totalWorkingHour1 = date2.getTime() - date1.getTime();
+						totalWorkingHour = String.valueOf(((totalWorkingHour1 / (1000 * 60 * 60)) % 24));
+					}
+
+					Double odoReading = 0.0;
+					if (Double.valueOf(odoOut) > Double.valueOf(odoIn)) {
+						odoReading = Double.valueOf(odoOut) - Double.valueOf(odoIn);
+
+					}
+					bean.setOdoReading(String.format("%.2f", odoReading));
+					bean.setWorkingHour(String.format("%.2f", Double.valueOf(totalWorkingHour)) + " Hr");
+					sqlString = "SELECT salary,avg_travelling_per_day,travelling_allowance,daily_allowance_doc from st_rm_bo_user_info WHERE user_id="
+							+ empId;
+					query = session.createSQLQuery(sqlString);
+					List<Object[]> empInfoResult = query.list();
+					if (empInfoResult != null & empInfoResult.size() > 0 && !empInfoResult.isEmpty()) {
+
+						for (Object[] obj1 : empInfoResult) {
+
+							String empSalary = obj1[0] != null ? obj1[0].toString() : "0";
+							String TA = obj1[2] != null ? obj1[2].toString() : "0";
+							String DA = obj1[3] != null ? obj1[3].toString() : "0";
+							String avgTravel = obj1[1] != null ? obj1[1].toString() : "0";
+							Double taAmt = Double.valueOf(TA) * odoReading;
+							bean.setTA(String.format("%.2f", taAmt));
+							if (odoReading >= 60 && Double.valueOf(totalWorkingHour) >= 7) {
+								bean.setdA(DA);
+							}
+							if (Double.valueOf(totalWorkingHour) < 7)
+								bean.setAttendanceType("H");
+
+							Double salaryAmt = Double.valueOf(empSalary) / 12;
+							String[] dtArr = obj[2].toString().split("-");
+							YearMonth yearMonthObject = YearMonth.of(Integer.valueOf(dtArr[0].trim()),
+									Integer.valueOf(dtArr[1].trim()));
+							int daysInMonth = yearMonthObject.lengthOfMonth();
+							salaryAmt = salaryAmt / daysInMonth;
+							bean.setSalary(String.format("%.2f", salaryAmt));
+							if (bean.getAttendanceType().equals("H")) {
+								salaryAmt = salaryAmt / 2;
+								bean.setSalary(String.format("%.2f", salaryAmt));
+							}
+						}
+					}
+					String dt = obj[2].toString();
+					sqlString = "SELECT expense_type,amount FROM `bo_um_emp_expenses` WHERE STR_TO_DATE(DATE,'%d-%m-%Y') = STR_TO_DATE('"
+							+ dt + "','%Y-%m-%d') and emp_id=" + empId;
+
+					query = session.createSQLQuery(sqlString);
+					List<Object[]> expenseResult = query.list();
+					if (expenseResult != null && expenseResult.size() > 0 && !expenseResult.isEmpty()) {
+
+						for (Object[] obj2 : expenseResult) {
+
+							String expenseType = obj2[0].toString();
+
+							if (expenseType.equals("Others Expense")) {
+
+								bean.setOtherExp(obj2[1].toString());
+							}
+							if (expenseType.equals("Hotel Expense")) {
+
+								bean.setHotelExp(obj2[1].toString());
+							}
+						}
+					}
+
+					map.put("" + count, bean);
+					count++;
+				}
+			}
+
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+		}
+		return map;
+	}
+
+	public boolean saveUserInfoBean(StRmBoUserInfo userDetailsBean, int userId) {
+		// TODO Auto-generated method stub
+
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			SQLQuery query = session.createSQLQuery("UPDATE st_rm_bo_user_info SET email_id='"
+					+ userDetailsBean.getEmailId() + "',phone_num='" + userDetailsBean.getPhoneNum() + "',salary='"
+					+ userDetailsBean.getSalary() + "',travelling_allowance='"
+					+ userDetailsBean.getTravellingAllowance() + "',avg_travelling_per_day='"
+					+ userDetailsBean.getAvgTravellingPerDay() + "',city_allowance='"
+					+ userDetailsBean.getCityAllowance() + "',ex_city_allowance='"
+					+ userDetailsBean.getExCityAllowance() + "',daily_allowance='" + userDetailsBean.getDailyAllowance()
+					+ "',daily_allowance_doc='" + userDetailsBean.getDailyAllowanceDoc() + "',branch='"
+					+ userDetailsBean.getBranch() + "',region='" + userDetailsBean.getRegion() + "',role='"
+					+ userDetailsBean.getRole() + "',department='" + userDetailsBean.getDepartment()
+					+ "',week_day_off='" + userDetailsBean.getWeekDay() + "' WHERE user_id=" + userId);
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
 }

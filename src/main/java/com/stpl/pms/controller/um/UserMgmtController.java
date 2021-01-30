@@ -401,14 +401,14 @@ public class UserMgmtController {
 	}
 
 	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String lastName, String status,
-			String type, Double val) throws PMSException {
+			String type, UserDetailsBean userDetailsBean) throws PMSException {
 		Session session = null;
 		Transaction tx = null;
 		try {
 			UserMgmtDaoImpl daoImpl = new UserMgmtDaoImpl();
 			session = HibernateSessionFactory.getSession();
 			tx = session.beginTransaction();
-			daoImpl.editBOUserDetails(userId, emailId, phoneNbr, lastName, status, type, session);
+			daoImpl.editBOUserDetails(userId, emailId, phoneNbr, lastName, status, type, session,userDetailsBean);
 			tx.commit();
 			String msgFor = "You are block for our BackOffice,Contact to Admin.";
 			try {

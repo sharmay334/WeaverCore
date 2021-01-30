@@ -22,6 +22,7 @@ public class BillsBean {
 	private String txnType;
 	private String empName;
 	private String dueDays;
+	private String actualBillAmount;
 	
 	public String getBillVoucherNo() {
 		return billVoucherNo;
@@ -181,6 +182,14 @@ public class BillsBean {
 
 	public void setDueDays(String dueDays) {
 		this.dueDays = dueDays;
+	}
+
+	public String getActualBillAmount() {
+		return actualBillAmount;
+	}
+
+	public void setActualBillAmount(String actualBillAmount) {
+		this.actualBillAmount = actualBillAmount;
 	}
 
 }

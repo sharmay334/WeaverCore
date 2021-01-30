@@ -59,6 +59,8 @@ public class StRmBoUserInfo implements java.io.Serializable {
 	private String region;	
 	private String authAmount;
 	private String department;
+	private String avgTravellingPerDay;
+	private String salary;
 	
 	/** default constructor */
 	public StRmBoUserInfo() {
@@ -578,6 +580,26 @@ public class StRmBoUserInfo implements java.io.Serializable {
 
 	public void setDepartment(String department) {
 		this.department = department;
+	}
+
+
+	public String getAvgTravellingPerDay() {
+		return avgTravellingPerDay;
+	}
+
+
+	public void setAvgTravellingPerDay(String avgTravellingPerDay) {
+		this.avgTravellingPerDay = avgTravellingPerDay;
+	}
+
+
+	public String getSalary() {
+		return salary;
+	}
+
+
+	public void setSalary(String salary) {
+		this.salary = salary;
 	}
 	
 }

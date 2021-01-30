@@ -26,6 +26,13 @@ public class QuartzListener implements ServletContextListener {
 				.build();
 		JobDetail job3 = JobBuilder.newJob(QuartzSchedulingVisitRem.class).withIdentity("anyJobName3", "group1")
 				.build();
+		
+		JobDetail job4 = JobBuilder.newJob(QuartzSchedulingSuperCashPartyBlock.class).withIdentity("anyJobName4", "group1")
+				.build();
+		
+		JobDetail job5 = JobBuilder.newJob(ClosingBalanceSchedule.class).withIdentity("anyJobName5", "group1")
+				.build();
+		
 		try {
 
 			Trigger trigger = TriggerBuilder.newTrigger().withIdentity("anyTriggerName", "group1")
@@ -58,7 +65,25 @@ public class QuartzListener implements ServletContextListener {
 			Scheduler scheduler3 = new StdSchedulerFactory().getScheduler();
 			scheduler3.start();
 			scheduler3.scheduleJob(job3, trigger3);
+			
+			Trigger trigger4 = TriggerBuilder.newTrigger().withIdentity("anyTriggerName4", "group1")
+					.withSchedule(CronScheduleBuilder.cronSchedule("0 0 1 1/1 * ? *")) //
+					.build();
 
+			Scheduler scheduler4 = new StdSchedulerFactory().getScheduler();
+			scheduler4.start();
+			scheduler4.scheduleJob(job4, trigger4);
+
+			
+			Trigger trigger5 = TriggerBuilder.newTrigger().withIdentity("anyTriggerName5", "group1")
+					.withSchedule(CronScheduleBuilder.cronSchedule("0 0 1 1/1 * ? *")) //
+					.build();
+
+			Scheduler scheduler5 = new StdSchedulerFactory().getScheduler();
+			scheduler5.start();
+			scheduler5.scheduleJob(job5, trigger5);
+
+			
 		} catch (SchedulerException e) {
 			e.printStackTrace();
 		}

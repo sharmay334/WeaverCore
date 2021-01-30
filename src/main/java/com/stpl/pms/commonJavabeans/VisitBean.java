@@ -1,7 +1,8 @@
 package com.stpl.pms.commonJavabeans;
 
 public class VisitBean {
-
+	
+	private String visitUniqueId;
 	private String customerType;
 	private String distributor;
 	private String retailer;
@@ -118,6 +119,14 @@ public class VisitBean {
 
 	public void setVisitor_picture(String visitor_picture) {
 		this.visitor_picture = visitor_picture;
+	}
+
+	public String getVisitUniqueId() {
+		return visitUniqueId;
+	}
+
+	public void setVisitUniqueId(String visitUniqueId) {
+		this.visitUniqueId = visitUniqueId;
 	}
 
 }

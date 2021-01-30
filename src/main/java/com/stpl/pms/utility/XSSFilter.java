@@ -173,10 +173,11 @@ public class XSSFilter implements Filter {
 	
 	public void init(FilterConfig filterConfig) throws ServletException {
 		System.out.println("XSSFilter: init()");
-		try{
-			GameLobbyController gameLobbyController = new GameLobbyController();
-			gameLobbyController.changeInProgressStatus();
-			
-		}catch(Exception e){e.printStackTrace();}
+		/*
+		 * try{ GameLobbyController gameLobbyController = new GameLobbyController();
+		 * gameLobbyController.changeInProgressStatus();
+		 * 
+		 * }catch(Exception e){e.printStackTrace();}
+		 */
 	}
 }

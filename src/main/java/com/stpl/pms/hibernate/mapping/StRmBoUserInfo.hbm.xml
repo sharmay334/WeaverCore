@@ -167,5 +167,11 @@
 		<property name="department" type="java.lang.String">
 			<column name="department" length="50" />
 		</property>
+		<property name="salary" type="java.lang.String">
+			<column name="salary" length="100" />
+		</property>
+		<property name="avgTravellingPerDay" type="java.lang.String">
+			<column name="avg_travelling_per_day" length="50" />
+		</property>
 	</class>
 </hibernate-mapping>

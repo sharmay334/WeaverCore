@@ -17,7 +17,7 @@ public class QuartzScheduling implements Job {
 		
 	}
 	
-	private boolean calculateTax() {
+	public boolean calculateTax() {
 		try {
 			GameLobbyController controller = new GameLobbyController();
 			controller.calculateTaxOnDebitBalanceOnly();

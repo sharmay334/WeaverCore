@@ -82,6 +82,8 @@ public class UserDetailsBean implements Serializable {
 	private String role;
 	private String region;	
 	private String authAmount;
+	private String avgTravellingPerDay;
+	private String salary;
 	
 
 	public String getFatherName() {
@@ -670,6 +672,22 @@ public class UserDetailsBean implements Serializable {
 
 	public void setAuthAmount(String authAmount) {
 		this.authAmount = authAmount;
+	}
+
+	public String getAvgTravellingPerDay() {
+		return avgTravellingPerDay;
+	}
+
+	public void setAvgTravellingPerDay(String avgTravellingPerDay) {
+		this.avgTravellingPerDay = avgTravellingPerDay;
+	}
+
+	public String getSalary() {
+		return salary;
+	}
+
+	public void setSalary(String salary) {
+		this.salary = salary;
 	}
 	
 }

@@ -20,6 +20,8 @@ public class StockItemBean {
 	private String isStandard;
 	private String costTrack;
 	private String itemRate;
+	private String hsnCode;
+	private String bulkUnit;
 
 	public int getItemId() {
 		return itemId;
@@ -172,5 +174,23 @@ public class StockItemBean {
 	public void setItemRate(String itemRate) {
 		this.itemRate = itemRate;
 	}
+
+	public String getHsnCode() {
+		return hsnCode;
+	}
+
+	public void setHsnCode(String hsnCode) {
+		this.hsnCode = hsnCode;
+	}
+
+	public String getBulkUnit() {
+		return bulkUnit;
+	}
+
+	public void setBulkUnit(String bulkUnit) {
+		this.bulkUnit = bulkUnit;
+	}
+	
+	
 
 }

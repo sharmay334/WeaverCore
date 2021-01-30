@@ -23,8 +23,8 @@ public class SMTPMailService {
 
 	private static final Logger logger = Logger.getLogger(SMTPMailService.class);
 	private static SMTPMailService instance;
-	private static final String SMTP_AUTH_USER = "jamidara.seeds@gmail.com";
-	private static final String SMTP_AUTH_PWD = "123456789jamidara";
+	private static final String SMTP_AUTH_USER = "info@jamidaraseeds.com";
+	private static final String SMTP_AUTH_PWD = "Jamidara@123";
 
 	public SMTPMailService() {
 	}
@@ -38,11 +38,47 @@ public class SMTPMailService {
 	public void sendMail(String fromEmail, String fromName, String toEmail, String replyTo, String subject, String body,
 			String smtpHost) {
 		try {
+			smtpHost = "mail.jamidaraseeds.com";
 			logger.info("Inside SMTP service...........");
 			Properties props = new Properties();
 			props.put("mail.smtp.host", smtpHost);
 			props.put("mail.smtp.ssl.trust", smtpHost);
 			Session session = SMTPMailService.getInstance().getSMTPSession(props, true);
+
+			MimeMessage message = new MimeMessage(session);
+			message.setFrom(new InternetAddress(fromEmail, fromName));
+			message.setReplyTo(InternetAddress.parse(replyTo, false));
+			message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+			message.setSubject(subject, "UTF-8");
+			message.setText(body, "UTF-8");
+			message.setSentDate(new Date());
+
+			// for sending simple body mail
+			message.setContent(body, "text/html; charset=UTF-8");
+
+			message.setSentDate(new Date());
+			// Send mail
+			Transport.send(message);
+				System.out.println("sent");
+			logger.info("SMTP mail sent SUCCESS....");
+
+		} catch (Exception e) {
+			logger.error(e);
+			e.printStackTrace();
+			logger.info("SMTP mail sent FAILED....");
+
+		}
+
+	}
+	public void sendMailOutlook(String fromEmail, String fromName, String toEmail, String replyTo, String subject, String body,
+			String smtpHost) {
+		try {
+			//smtpHost = "mail.jamidaraseeds.com";
+			logger.info("Inside SMTP service...........");
+			Properties props = new Properties();
+			props.put("mail.smtp.host", smtpHost);
+			props.put("mail.smtp.ssl.trust", smtpHost);
+			Session session = SMTPMailService.getInstance().getSMTPSessionOutlook(props, true);
 
 			MimeMessage message = new MimeMessage(session);
 			message.setFrom(new InternetAddress(fromEmail, fromName));
@@ -221,6 +257,23 @@ logger.info("SMTP mail sent FAILED....");
 		final String password = SMTP_AUTH_PWD;
 		if (senderAuth) {
 			props.put("mail.smtp.auth", "true");
+			props.put("mail.smtp.starttls.enable", "false");
+			props.put("mail.smtp.port", "587");
+			return Session.getInstance(props, new javax.mail.Authenticator() {
+				protected PasswordAuthentication getPasswordAuthentication() {
+					return new PasswordAuthentication(username, password);
+				}
+			});
+		} else {
+			return Session.getInstance(props, null);
+		}
+	}
+	
+	public Session getSMTPSessionOutlook(Properties props, boolean senderAuth) {
+		final String username = "emsgroup2021@outlook.com";
+		final String password = "12345678ems";
+		if (senderAuth) {
+			props.put("mail.smtp.auth", "true");
 			props.put("mail.smtp.starttls.enable", "true");
 			props.put("mail.smtp.port", "587");
 			return Session.getInstance(props, new javax.mail.Authenticator() {
@@ -236,11 +289,11 @@ logger.info("SMTP mail sent FAILED....");
 	public static void main(String[] args) {
 
 		String toEmail = "sharmay334@gmail.com";
-		String fromEmail = SMTP_AUTH_USER;
+		String fromEmail = "emsgroup2021@outlook.com";
 		String subject = "HELLO TESTING";
 		String message = "test message";
-		String fromName = SMTP_AUTH_USER;
-		String mailSmtpHost = "smtp.gmail.com";
-		SMTPMailService.getInstance().sendMail(fromEmail, fromName, toEmail, fromEmail, subject, message, mailSmtpHost);
+		String fromName = "emsgroup2021@outlook.com";
+		String mailSmtpHost = "smtp.office365.com";
+		SMTPMailService.getInstance().sendMailOutlook(fromEmail, fromName, toEmail, fromEmail, subject, message, mailSmtpHost);
 	}
 }

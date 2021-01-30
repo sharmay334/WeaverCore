@@ -253,16 +253,18 @@ public class UserMgmtDaoImpl {
 		userInfo.setRole(usrdetBean.getRole()!=null?usrdetBean.getRole():"");
 		userInfo.setDepartment(usrdetBean.getDepartment()!=null?usrdetBean.getDepartment():"");
 		userInfo.setWeekDay(usrdetBean.getWeekDay()!=null?usrdetBean.getWeekDay():"");
-		userInfo.setTravellingAllowance(usrdetBean.getTravellingAllowance()!=null?usrdetBean.getTravellingAllowance():"");
-		userInfo.setCityAllowance(usrdetBean.getCityAllowance()!=null?usrdetBean.getCityAllowance():"");
-		userInfo.setExCityAllowance(usrdetBean.getExCityAllowance()!=null?usrdetBean.getExCityAllowance():"");
-		userInfo.setDailyAllowance(usrdetBean.getDailyAllowance()!=null?usrdetBean.getDailyAllowance():"");
-		userInfo.setDailyAllowanceDoc(usrdetBean.getDailyAllowanceDoc()!=null?usrdetBean.getDailyAllowanceDoc():"");
+		userInfo.setTravellingAllowance(usrdetBean.getTravellingAllowance()!=null?usrdetBean.getTravellingAllowance():"0");
+		userInfo.setCityAllowance(usrdetBean.getCityAllowance()!=null?usrdetBean.getCityAllowance():"0");
+		userInfo.setExCityAllowance(usrdetBean.getExCityAllowance()!=null?usrdetBean.getExCityAllowance():"0");
+		userInfo.setDailyAllowance(usrdetBean.getDailyAllowance()!=null?usrdetBean.getDailyAllowance():"0");
+		userInfo.setDailyAllowanceDoc(usrdetBean.getDailyAllowanceDoc()!=null?usrdetBean.getDailyAllowanceDoc():"0");
 		userInfo.setAttendanceSelfie(usrdetBean.getAttendanceSelfie()!=null?usrdetBean.getAttendanceSelfie():"");
 		userInfo.setAttendanceTime(usrdetBean.getAttendanceTime()!=null?usrdetBean.getAttendanceTime():"");
 		userInfo.setLeaves(usrdetBean.getLeaves()!=null?usrdetBean.getLeaves():"");
 		userInfo.setApprover(usrdetBean.getApprover()!=null?usrdetBean.getApprover():"");
 		userInfo.setAuthAmount(usrdetBean.getAuthAmount()!=null?usrdetBean.getAuthAmount():"");
+		userInfo.setSalary(usrdetBean.getSalary()!=null?usrdetBean.getSalary():"0");
+		userInfo.setAvgTravellingPerDay(usrdetBean.getAvgTravellingPerDay()!=null?usrdetBean.getAvgTravellingPerDay():"0");
 		// userInfo.setStRmBoUserMaster(stRmBoUserMaster);
 
 //		stRmBoUserMaster.setStRmBoUserInfo(userInfo);
@@ -880,7 +882,7 @@ public class UserMgmtDaoImpl {
 	}
 
 	public void editBOUserDetails(int userId, String emailId, String phoneNbr, String lastName, String status,
-			String type, Session session) {
+			String type, Session session,UserDetailsBean detailsBean) {
 		// because master can not change his status himself thats why it
 		// is not displayed at front page and it gives null here
 		if (status == null || status.equalsIgnoreCase("downloadCase") || status.equalsIgnoreCase("useractivity")) {
@@ -897,7 +899,20 @@ public class UserMgmtDaoImpl {
 		userInfoList.get(0).setEmailId(emailId);
 		userInfoList.get(0).setPhoneNum(phoneNbr);
 		userInfoList.get(0).setLastName(lastName);
-
+		
+		userInfoList.get(0).setSalary(detailsBean.getSalary());
+		userInfoList.get(0).setTravellingAllowance(detailsBean.getTravellingAllowance());
+		userInfoList.get(0).setAvgTravellingPerDay(detailsBean.getAvgTravellingPerDay());
+		userInfoList.get(0).setCityAllowance(detailsBean.getCityAllowance());
+		userInfoList.get(0).setExCityAllowance(detailsBean.getExCityAllowance());
+		userInfoList.get(0).setDailyAllowance(detailsBean.getDailyAllowance());
+		userInfoList.get(0).setDailyAllowanceDoc(detailsBean.getDailyAllowanceDoc());
+		userInfoList.get(0).setBranch(detailsBean.getBranch());
+		userInfoList.get(0).setRegion(detailsBean.getRegion());
+		userInfoList.get(0).setRole(detailsBean.getRole());
+		userInfoList.get(0).setDepartment(detailsBean.getDepartment());
+		userInfoList.get(0).setWeekDay(detailsBean.getWeekDay());
+		
 		session.update(userInfoList.get(0));
 	}
 
