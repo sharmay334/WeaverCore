@@ -12801,7 +12801,7 @@ public class GameLobbyController {
 					batteryBean.setId((int) obj[0]);
 					batteryBean.setDateTime(obj[4].toString());
 					batteryBean.setBatteryPercentage(obj[3].toString());
-					batteryBean.setReason(obj[5]!=null?obj[5].toString():"");
+					batteryBean.setReason(obj[5] != null ? obj[5].toString() : "");
 					map.put((int) obj[0], batteryBean);
 				}
 			}
@@ -12850,7 +12850,8 @@ public class GameLobbyController {
 		return null;
 	}
 
-	public Map<String, SalaryReportBean> generateSalaryReportBean(String empName, String fromDate, String toDate) {
+	public Map<String, SalaryReportBean> generateSalaryReportBean(String empName, String fromDate, String toDate,
+			boolean holdFlag) {
 		// TODO Auto-generated method stub
 		Map<String, SalaryReportBean> map = new HashMap<String, SalaryReportBean>();
 		SalaryReportBean bean = null;
@@ -12867,11 +12868,20 @@ public class GameLobbyController {
 			int count = 1;
 			if (result != null && result.size() > 0 && !result.isEmpty()) {
 
+				boolean salaryHold = false, TAHold = false, DAHold = false, hotelExpense = false, otherExpense = false;
+
 				for (Object[] obj : result) {
 
 					bean = new SalaryReportBean();
+					salaryHold = false;
+					TAHold = false;
+					DAHold = false;
+					hotelExpense = false;
+					otherExpense = false;
+
 					bean.setEmpId(String.valueOf("Emp-" + (int) obj[0]));
 					bean.setDate(obj[2].toString());
+
 					bean.setAttendanceType(obj[1].toString());
 					bean.setTA("0.0");
 					bean.setdA("0.0");
@@ -12883,6 +12893,34 @@ public class GameLobbyController {
 
 					String odoIn = obj[5] != null ? obj[5].toString() : "0";
 					String odoOut = obj[6] != null ? obj[6].toString() : "0";
+
+					String[] dateSplit = obj[2].toString().split("-");
+					String formattedDate = dateSplit[2] + "-" + dateSplit[1] + "-" + dateSplit[0];
+					sqlString = "SELECT * FROM st_rm_emp_salary_hold WHERE Date='" + formattedDate + "' and emp_id="
+							+ empId;
+					query = session.createSQLQuery(sqlString);
+					List<Object[]> holdResult = query.list();
+
+					if (holdResult != null && !holdResult.isEmpty() && holdResult.size() > 0) {
+
+						for (Object[] holdData : holdResult) {
+
+							String type = holdData[3].toString();
+
+							if (type.equalsIgnoreCase("TA"))
+								TAHold = true;
+							if (type.equalsIgnoreCase("Others Expense"))
+								otherExpense = true;
+							if (type.equalsIgnoreCase("Salary"))
+								salaryHold = true;
+							if (type.equalsIgnoreCase("Hotel Expense"))
+								hotelExpense = true;
+							if (type.equalsIgnoreCase("DA"))
+								DAHold = true;
+
+						}
+
+					}
 
 					long totalWorkingHour1 = 0;
 					String totalWorkingHour = "0.0";
@@ -12915,6 +12953,7 @@ public class GameLobbyController {
 							String DA = obj1[3] != null ? obj1[3].toString() : "0";
 							String avgTravel = obj1[1] != null ? obj1[1].toString() : "0";
 							Double taAmt = Double.valueOf(TA) * odoReading;
+
 							bean.setTA(String.format("%.2f", taAmt));
 							if (odoReading >= 60 && Double.valueOf(totalWorkingHour) >= 7) {
 								bean.setdA(DA);
@@ -12957,6 +12996,19 @@ public class GameLobbyController {
 							}
 						}
 					}
+					if (holdFlag) {
+						if (TAHold)
+							bean.setTA("0.0");
+						if (DAHold)
+							bean.setdA("0.0");
+						if (salaryHold)
+							bean.setSalary("0.0");
+						if (hotelExpense)
+							bean.setHotelExp("0.0");
+						if (otherExpense)
+							bean.setOtherExp("0.0");
+
+					}
 
 					map.put("" + count, bean);
 					count++;
@@ -12994,4 +13046,33 @@ public class GameLobbyController {
 		return false;
 	}
 
+	public boolean setAmountOnHold(String empName, String fromDate, String type) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getUserIdByName(empName);
+			SQLQuery query = session.createSQLQuery("INSERT INTO st_rm_emp_salary_hold(`emp_id`,`Date`,`Type`) values("
+					+ empId + ",'" + fromDate + "','" + type + "')");
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public boolean setAmountOnUnHold(String empName, String fromDate, String type) {
+		// TODO Auto-generated method stub
+		try {
+			Session session = HibernateSessionFactory.getSession();
+			int empId = getUserIdByName(empName);
+			SQLQuery query = session.createSQLQuery("DELETE FROM st_rm_emp_salary_hold WHERE emp_id=" + empId
+					+ " and Date='" + fromDate + "' and Type='" + type + "'");
+			query.executeUpdate();
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
 }
