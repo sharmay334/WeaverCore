@@ -16,7 +16,9 @@ public class VisitBean {
 	private String comment;
 	private String reminder;
 	private String visitor_picture;
-
+	private String noOfVisit;
+	private String visitDate;
+	
 	public String getCustomerType() {
 		return customerType;
 	}
@@ -127,6 +129,22 @@ public class VisitBean {
 
 	public void setVisitUniqueId(String visitUniqueId) {
 		this.visitUniqueId = visitUniqueId;
+	}
+
+	public String getNoOfVisit() {
+		return noOfVisit;
+	}
+
+	public void setNoOfVisit(String noOfVisit) {
+		this.noOfVisit = noOfVisit;
+	}
+
+	public String getVisitDate() {
+		return visitDate;
+	}
+
+	public void setVisitDate(String visitDate) {
+		this.visitDate = visitDate;
 	}
 
 }

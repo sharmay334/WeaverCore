@@ -25,6 +25,7 @@ public class LedgerCustomBean {
 	private String tehsil;
 	private String pincode;
 	private String gstnNo;
+	private String location;
 
 	public int getLedgerId() {
 		return ledgerId;
@@ -208,6 +209,14 @@ public class LedgerCustomBean {
 
 	public void setGstnNo(String gstnNo) {
 		this.gstnNo = gstnNo;
+	}
+
+	public String getLocation() {
+		return location;
+	}
+
+	public void setLocation(String location) {
+		this.location = location;
 	}
 
 }

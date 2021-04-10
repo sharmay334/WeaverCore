@@ -1,5 +1,6 @@
 package com.stpl.pms.mail.services;
 
+import java.io.RandomAccessFile;
 import java.util.Date;
 import java.util.Properties;
 
@@ -285,15 +286,22 @@ logger.info("SMTP mail sent FAILED....");
 			return Session.getInstance(props, null);
 		}
 	}
-
+	
 	public static void main(String[] args) {
-
-		String toEmail = "sharmay334@gmail.com";
+		
+		try {
+			RandomAccessFile accessFile = new RandomAccessFile("a.txt", "r");
+			byte[] b = new byte[1000];
+			accessFile.readFully(b);
+		}catch(Exception e) {
+			e.printStackTrace();
+		}
+		/*String toEmail = "sharmay334@gmail.com";
 		String fromEmail = "emsgroup2021@outlook.com";
 		String subject = "HELLO TESTING";
 		String message = "test message";
 		String fromName = "emsgroup2021@outlook.com";
 		String mailSmtpHost = "smtp.office365.com";
-		SMTPMailService.getInstance().sendMailOutlook(fromEmail, fromName, toEmail, fromEmail, subject, message, mailSmtpHost);
+		SMTPMailService.getInstance().sendMailOutlook(fromEmail, fromName, toEmail, fromEmail, subject, message, mailSmtpHost);*/
 	}
 }

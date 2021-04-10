@@ -33,10 +33,11 @@ public class QuartzListener implements ServletContextListener {
 		JobDetail job5 = JobBuilder.newJob(ClosingBalanceSchedule.class).withIdentity("anyJobName5", "group1")
 				.build();
 		
+		
 		try {
 
 			Trigger trigger = TriggerBuilder.newTrigger().withIdentity("anyTriggerName", "group1")
-					.withSchedule(CronScheduleBuilder.cronSchedule("0 0 23 1/1 * ? *")).build(); //
+					.withSchedule(CronScheduleBuilder.cronSchedule("0 0 22 1/1 * ? *")).build(); //
 
 			Scheduler scheduler = new StdSchedulerFactory().getScheduler();
 			scheduler.start();

@@ -23,6 +23,15 @@ public class BillsBean {
 	private String empName;
 	private String dueDays;
 	private String actualBillAmount;
+	private String itemBatch;
+	private String itemUnit;
+	private String itemQty;
+	private String itemPrice;
+	private String itemTotalValue;
+	private String itemName;
+	private String itemUnitBulk;
+	private String itemUnitAlt;
+	
 	
 	public String getBillVoucherNo() {
 		return billVoucherNo;
@@ -190,6 +199,70 @@ public class BillsBean {
 
 	public void setActualBillAmount(String actualBillAmount) {
 		this.actualBillAmount = actualBillAmount;
+	}
+
+	public String getItemBatch() {
+		return itemBatch;
+	}
+
+	public void setItemBatch(String itemBatch) {
+		this.itemBatch = itemBatch;
+	}
+
+	public String getItemUnit() {
+		return itemUnit;
+	}
+
+	public void setItemUnit(String itemUnit) {
+		this.itemUnit = itemUnit;
+	}
+
+	public String getItemQty() {
+		return itemQty;
+	}
+
+	public void setItemQty(String itemQty) {
+		this.itemQty = itemQty;
+	}
+
+	public String getItemPrice() {
+		return itemPrice;
+	}
+
+	public void setItemPrice(String itemPrice) {
+		this.itemPrice = itemPrice;
+	}
+
+	public String getItemTotalValue() {
+		return itemTotalValue;
+	}
+
+	public void setItemTotalValue(String itemTotalValue) {
+		this.itemTotalValue = itemTotalValue;
+	}
+
+	public String getItemName() {
+		return itemName;
+	}
+
+	public void setItemName(String itemName) {
+		this.itemName = itemName;
+	}
+
+	public String getItemUnitBulk() {
+		return itemUnitBulk;
+	}
+
+	public void setItemUnitBulk(String itemUnitBulk) {
+		this.itemUnitBulk = itemUnitBulk;
+	}
+
+	public String getItemUnitAlt() {
+		return itemUnitAlt;
+	}
+
+	public void setItemUnitAlt(String itemUnitAlt) {
+		this.itemUnitAlt = itemUnitAlt;
 	}
 
 }

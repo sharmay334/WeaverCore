@@ -21,9 +21,12 @@ public class QuartzScheduling implements Job {
 		try {
 			GameLobbyController controller = new GameLobbyController();
 			controller.calculateTaxOnDebitBalanceOnly();
-			controller.calculateTaxOnCreditBalanceOnly();
+			/*controller.calculateTaxOnCreditBalanceOnly();
+			controller.calculateOverDueAmountInterest();*/
+			
+			
 			//controller.calculateTaxOnAdvanceBalanceOnly();
-			controller.calculateOverDueAmountInterest();
+			
 			
 			//controller.calculateAddInterestAmtOnCurrentBalance();
 		}catch(Exception e) {
